@@ -9,7 +9,7 @@
 #include <thread>
 #include <iostream>
 #include <string>
-
+using namespace std;
 // Bien toan cuc da khai bao trong Utils.cpp
 // extern volatile bool IS_RUNNING;
 // extern volatile char MOVING;
