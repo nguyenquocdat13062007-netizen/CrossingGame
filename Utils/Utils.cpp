@@ -1,5 +1,5 @@
 #include "Utils.h"
-
+using namespace std;
 // Dinh nghia bien toan cuc
 volatile bool IS_RUNNING = true;
 volatile char MOVING = ' ';
