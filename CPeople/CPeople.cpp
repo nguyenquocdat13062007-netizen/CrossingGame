@@ -1,6 +1,6 @@
 #include "CPeople.h"
 #include <iostream>
-
+using namespace std;
 CPEOPLE::CPEOPLE()
     : mX(SCREEN_WIDTH / 2), mY(ROAD_BOTTOM),
     mAlive(true), mFinished(false) {
