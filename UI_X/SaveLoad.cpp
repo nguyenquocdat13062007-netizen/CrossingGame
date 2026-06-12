@@ -23,9 +23,6 @@ bool CGAME::saveGame(const std::string& filename) {
 // ============================================================
 bool CGAME::loadGame(const std::string& filename) {
     
-        if (i < mNumBirds && mBirds[i]) mBirds[i]->setX(x);
-    }
-
-    ifs.close();
+       
     return true;
 }
