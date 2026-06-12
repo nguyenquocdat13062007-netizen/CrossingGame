@@ -22,7 +22,5 @@ bool CGAME::saveGame(const std::string& filename) {
 // LOAD GAME
 // ============================================================
 bool CGAME::loadGame(const std::string& filename) {
-    
-       
-    return true;
+
 }
