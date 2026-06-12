@@ -1,6 +1,6 @@
 #include "CVehicle.h"
 #include <iostream>
-
+using namespace std;
 // =============================================
 // CVEHICLE
 // =============================================
