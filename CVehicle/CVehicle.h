@@ -3,6 +3,7 @@
 #define CVEHICLE_H
 #include "Utils.h"
 #include <string>
+using namespace std;
 // =============================================
 // LỚP CƠ SỞ: CVEHICLE
 // =============================================
