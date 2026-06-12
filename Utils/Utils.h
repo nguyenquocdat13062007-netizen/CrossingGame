@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 #include <conio.h>
-
+using namespace std;
 //------------------------------KÍCH THƯỚC MÀN HÌNH TRÊN CONSOLE------------------------------ 		
 const int SCREEN_WIDTH = 80;   // Chiều rộng 80 ký tự — chuẩn console Windows
 const int SCREEN_HEIGHT = 30;  // Chiều cao 30 dòng
