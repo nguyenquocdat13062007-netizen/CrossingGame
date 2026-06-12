@@ -5,7 +5,7 @@
 #include "Utils.h"
 #include "CVehicle.h"
 #include "CAnimal.h"
-
+using namespace std;
 // =============================================
 // LỚP CPEOPLE — Người qua đường
 // =============================================
