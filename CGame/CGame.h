@@ -8,6 +8,7 @@
 #include <fstream>
 #include <string>
 #include <thread>
+using namespace std;
 class CGAME {
 private:
     // ---- Mảng đối tượng (cấp phát động) ----
