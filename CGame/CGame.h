@@ -1,274 +1,145 @@
 #pragma once
 #ifndef CGAME_H
 #define CGAME_H
+
+// ================================================================
+// FIX: them windows.h TRUOC SFML de co HANDLE, SuspendThread,
+//      ResumeThread, Sleep - tranh loi "HANDLE undefined"
+// ================================================================
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+
 #include "Utils.h"
 #include "CPeople.h"
 #include "CVehicle.h"
 #include "CAnimal.h"
+#include <SFML/Graphics.hpp>
 #include <fstream>
 #include <string>
-#include <thread>
 using namespace std;
-class CGAME {
-private:
-    // ---- Mảng đối tượng (cấp phát động) ----
-
-    CTRUCK* mTrucks[MAX_TRUCKS];
-    // Mảng con trỏ tới MAX_TRUCKS (=3) xe tải
-    // Dùng con trỏ thay vì object trực tiếp để linh hoạt: new/delete khi đổi level
-    // CGAME tạo: mTrucks[i] = new CTRUCK(x, y, speed, dir)
-    // CGAME xóa: delete mTrucks[i] trong destructor hoặc resetGame()
-
-    CCAR* mCars[MAX_CARS];
-    // Mảng con trỏ tới MAX_CARS (=4) xe hơi — tương tự CTRUCK
-
-    CDINOSAUR* mDinos[MAX_DINOS];
-    // Mảng con trỏ tới MAX_DINOS (=2) khủng long
-    // CDINOSAUR kế thừa CANIMAL — khai báo trong CAnimal.h
-
-    CBIRD* mBirds[MAX_BIRDS];
-    // Mảng con trỏ tới MAX_BIRDS (=3) chim — tương tự CDINOSAUR
-
-    CTRAFFICLIGHT* mLights[MAX_TRUCKS + MAX_CARS];
-    // Mảng đèn giao thông — 1 đèn cho mỗi làn xe
-    // MAX_TRUCKS + MAX_CARS = 3 + 4 = 7 đèn tối đa
-    // mLights[i] quản lý làn xe thứ i, khi đỏ thì dừng tất cả xe ở làn đó
-
-    CPEOPLE mPeople;
-    // Object nhân vật người chơi — dùng composition (chứa trực tiếp, không qua con trỏ)
-    // Composition vì CGAME và CPEOPLE có vòng đời gắn liền: CGAME chết thì CPEOPLE cũng mất
-
-    // ---- Trạng thái game ----
-
-    int mLevel;
-    // Cấp độ hiện tại, từ 1 đến MAX_LEVEL (=5)
-    // Tăng trong nextLevel(), reset về 1 trong resetGame()
-
-    int mScore;
-    // Điểm tích lũy của người chơi
-    // Tăng mỗi khi qua đường thành công: mScore += mLevel * 100
-
-    int mLives;
-    // Số mạng còn lại — thường bắt đầu là 3
-    // Giảm 1 khi chết, hết mạng thì Game Over
-
-    bool mPaused;
-    // true  = game đang tạm dừng (người dùng nhấn P)
-    // false = game đang chạy bình thường
-    // SubThread kiểm tra mPaused trước mỗi frame update
-
-    // ---- Số lượng xe/thú theo cấp ----
-
-    int mNumTrucks;
-    // Số xe tải thực sự đang dùng ở level hiện tại (≤ MAX_TRUCKS)
-    // Level 1: 1 truck, Level 2: 2 trucks... tăng dần theo nextLevel()
-
-    int mNumCars;
-    // Số xe hơi thực sự đang dùng (≤ MAX_CARS)
-
-    int mNumDinos;
-    // Số khủng long thực sự đang dùng (≤ MAX_DINOS)
-
-    int mNumBirds;
-    // Số chim thực sự đang dùng (≤ MAX_BIRDS)
-
-    std::thread* mSubThread;
-    // Con trỏ tới thread phụ chạy game loop (vẽ + update + kiểm tra)
-    // Dùng con trỏ để CGAME kiểm soát vòng đời thread
-    // pauseGame() gọi SuspendThread(), resumeGame() gọi ResumeThread()
-
-    // ---- Hàm nội bộ (private — chỉ CGAME tự gọi) ----
-
-    void InitLanes();
-    // Tạo và đặt vị trí ban đầu cho xe/thú theo từng làn đường
-    // Phân bổ: làn 3-6 cho xe (ROAD_TOP → ROAD_BOTTOM), làn 1-2 cho thú
-    // Init() gọi hàm này sau khi khởi tạo số lượng xe/thú
-
-    void DrawStatus();
-    // Vẽ thanh trạng thái phía dưới màn hình: Level, Score, Lives, phím tắt
-    // Gọi PrintAt() với COLOR_INFO
-    // drawGame() gọi hàm này ở cuối mỗi frame
-
-    int GetLaneY(int laneIndex);
-    // Tính tọa độ Y của làn thứ laneIndex
-    // Công thức: ROAD_TOP + laneIndex * ((ROAD_BOTTOM - ROAD_TOP) / LANE_COUNT)
-    // InitLanes() gọi để biết đặt xe/thú ở dòng mấy
-
-public:
-    CGAME();
-    // Constructor — khởi tạo tất cả con trỏ về nullptr, mLevel=1, mScore=0, mLives=3
-    // KHÔNG new xe/thú ở đây — để Init() làm việc đó
-
-    ~CGAME();
-    // Destructor — delete tất cả xe, thú, đèn đã new trong Init()
-    // Bắt buộc vì dùng con trỏ động: nếu không delete → memory leak
-
-    int getmLives();
-    // Getter cho mLives — main() dùng để kiểm tra còn mạng không
-    // Nếu mLives == 0 → hiện Game Over
-
-    // ---- Khởi động / Reset ----
-
-    void Init();
-    // Khởi tạo toàn bộ: new xe/thú/đèn, đặt vị trí qua InitLanes()
-    // Gọi 1 lần khi bắt đầu game, và gọi lại khi loadGame()
-
-    void startGame();
-    // Reset dữ liệu + vẽ màn hình lần đầu + khởi động SubThread
-    // Đây là hàm main() gọi sau khi người dùng chọn "New Game" ở menu
-
-    void DrawBorder();
-    // Vẽ khung viền xung quanh màn hình bằng ký tự '─', '│', '┌', '┐'...
-    // Gọi 1 lần trong startGame(), không cần vẽ lại mỗi frame
-
-    void DrawRoad();
-    // Vẽ các làn đường: dấu gạch ngang '─' phân cách giữa các làn
-    // Gọi 1 lần trong startGame() cùng với DrawBorder()
-
-    void resetGame();
-    // Reset người về vị trí xuất phát, reset mScore về 0, mLevel về 1
-    // Gọi khi người chơi hết mạng và chọn chơi lại
-
-    void nextLevel();
-    // Tăng mLevel++, tăng số lượng xe/thú, tăng tốc độ
-    // Delete xe/thú cũ, new lại với thông số khó hơn
-    // Gọi khi checkFinish() trả về true
-
-    // ---- Vẽ màn hình ----
-
-    void drawGame();
-    // Vẽ toàn bộ trạng thái 1 frame: xe, thú, người, đèn, trạng thái
-    // SubThread gọi hàm này mỗi Sleep(100) — khoảng 10 FPS
-    // KHÔNG gọi system("cls") — thay vào đó Clear() rồi Draw() từng object
-
-    // ---- Getter cho thread chính ----
-
-    CPEOPLE& getPeople() { return mPeople; }
-    // Trả về tham chiếu tới object mPeople
-    // main() dùng: if (cg.getPeople().isDead()) để kiểm tra trạng thái
-    // Tham chiếu (không phải con trỏ) — đảm bảo không bao giờ null
-
-    CVEHICLE** getVehicles();
-    // Trả về mảng con trỏ CVEHICLE* (upcasting từ CCAR*/CTRUCK*)
-    // T4 dùng trong saveGame() để duyệt qua tất cả xe lưu vị trí
-
-    CANIMAL** getAnimals();
-    // Trả về mảng con trỏ CANIMAL* (upcasting từ CBIRD*/CDINOSAUR*)
-    // T4 dùng tương tự getVehicles()
-
-    int getVehicleCount() const;
-    // Trả về tổng số xe đang hoạt động = mNumTrucks + mNumCars
-
-    int getAnimalCount() const;
-    // Trả về tổng số thú đang hoạt động = mNumDinos + mNumBirds
-
-    // ---- Cập nhật vị trí ----
-
-    void updatePosPeople(char key);
-    // Di chuyển nhân vật theo phím: 'W'=Up, 'S'=Down, 'A'=Left, 'D'=Right
-    // Gọi Clear() trước, di chuyển, rồi Draw() sau
-    // SubThread gọi với biến toàn cục MOVING mỗi frame
-
-    void updatePosVehicle();
-    // Duyệt tất cả xe: nếu không bị dừng thì gọi Clear() + Move() + Draw()
-    // Kiểm tra đèn giao thông trước khi Move()
-
-    void updatePosAnimal();
-    // Duyệt tất cả thú: Clear() + Move() + Draw()
-    // Thú không bị ảnh hưởng bởi đèn giao thông
-
-    void updateTrafficLights();
-    // Gọi Update() cho từng đèn trong mLights[]
-    // Khi đèn đổi màu: gọi Stop()/Resume() cho xe ở làn tương ứng
-    // SubThread gọi mỗi frame trước updatePosVehicle()
-
-    // ---- Kiểm tra trạng thái ----
-
-    bool checkCollision();
-    // Kiểm tra nhân vật có trùng tọa độ với xe/thú nào không
-    // Nếu có: gọi mPeople.Die(), DrawDeathEffect(), giảm mLives
-    // Trả về true nếu người vừa chết — SubThread dừng update, hiện thông báo
-
-    bool checkFinish();
-    // Kiểm tra mPeople.isFinished() (đã chạm FINISH_Y)
-    // Nếu true: tăng điểm, gọi nextLevel() hoặc showWin() nếu đã max level
-    // Trả về true để SubThread biết cần chuyển level
-
-    // ---- Pause / Resume ----
-
-    void pauseGame(HANDLE hThread);
-    // Dừng SubThread bằng SuspendThread(hThread)
-    // Đặt mPaused = true, hiện thông báo "PAUSED"
-    // main() gọi khi người dùng nhấn phím 'P'
-
-    void resumeGame(HANDLE hThread);
-    // Tiếp tục SubThread bằng ResumeThread(hThread)
-    // Đặt mPaused = false, xóa thông báo "PAUSED"
-    // main() gọi khi người dùng nhấn bất kỳ phím nào sau pause
-
-    bool isPaused() const { return mPaused; }
-    // Trả về trạng thái pause hiện tại
-    // main() kiểm tra trước khi xử lý phím di chuyển:
-    // if (!cg.isPaused()) MOVING = key
-
-    // ---- Exit ----
-
-    void exitGame(HANDLE hThread);
-    // Đặt IS_RUNNING = false, gọi ResumeThread() nếu đang pause
-    // Chờ SubThread tự kết thúc, sau đó dọn dẹp bộ nhớ
-    // main() gọi khi người dùng nhấn ESC
-
-    // ---- Save / Load ----
-
-    bool saveGame(const std::string& filename);
-    // Đóng gói toàn bộ trạng thái game vào GameSaveData struct
-    // Ghi binary ra file bằng ofstream
-    // Trả về true nếu lưu thành công, false nếu lỗi mở file
-    // T4 implement hàm này trong SaveLoad.cpp
-
-    bool loadGame(const std::string& filename);
-    // Đọc file binary vào GameSaveData struct
-    // Delete đối tượng cũ, new lại từ dữ liệu đọc được
-    // Trả về true nếu load thành công
-    // T4 implement hàm này trong SaveLoad.cpp
-
-    // ---- Menu và thông báo ----
-
-    void showMenu();
-    // Hiện menu chính: New Game / Load Game / Settings / Thoát
-    // Dùng SetColor(COLOR_TITLE) cho tiêu đề, GotoXY căn giữa
-    // T5 implement hàm này trong Menu.cpp
-
-    void showPauseMsg();
-    // Hiện "[PAUSED] Nhan phim bat ky de tiep tuc" ở giữa màn hình
-    // T5 implement
-
-    void showDeadMsg();
-    // Hiện thông báo chết: "[X] GAME OVER" hoặc "Nhan Y de choi lai"
-    // T5 implement
-
-    void showLevelUp();
-    // Hiện thông báo lên cấp: "LEVEL UP! → Level X" trong 1 giây
-    // T5 implement, dùng Sleep(1000) rồi tự xóa
-
-    void showWin();
-    // Hiện thông báo thắng khi qua hết MAX_LEVEL cấp
-    // T5 implement
-
-    // ---- Getters ----
-
-    int getLevel() const { return mLevel; }
-    // Trả về cấp độ hiện tại
-    // DrawStatus() và T4 (saveGame) dùng
-
-    int getScore() const { return mScore; }
-    // Trả về điểm hiện tại
-    // DrawStatus() và T4 (saveGame) dùng
+using namespace sf;
+
+// ================================================================
+// ENUM TRANG THAI MAN HINH
+// ================================================================
+enum class GameState {
+	MENU, // Trang thai hien menu chinh, cho nguoi choi chon Start, Load, Exit
+	PLAYING, // Trang thai dang choi, SubThread cap nhat logic, main render
+	PAUSED, // Trang thai tam dung, SubThread khong cap nhat logic, main render menu pause
+	DEAD, // Trang thai nguoi choi da chet, SubThread khong cap nhat logic, main render menu dead
+	GAMEOVER, // Trang thai ket thuc game, nguoi choi het mang, SubThread khong cap nhat logic, main render menu game over
+	WIN, // Trang thai nguoi choi chien thang, dat vạch FINISH, SubThread khong cap nhat logic, main render menu win
+    LEVEL_UP   // Dat boi SubThread khi qua man, main xu ly nextLevel() an toan
 };
 
-void SubThread();
-// Hàm chạy trong thread phụ — khai báo ngoài class vì std::thread cần hàm tự do
-// Không phải method của CGAME — nhưng truy cập object CGAME qua biến toàn cục
-// Vòng lặp: while(IS_RUNNING) { update + draw + check + Sleep(100) }
+// ================================================================
+// LOP CGAME - Quan ly toan bo game
+//
+// Tuong ung voi yeu cau do an:
+//   axt  = CTRUCK*  mang xe tai      (ten goc: axt)
+//   axh  = CCAR*    mang xe hoi      (ten goc: axh)
+//   akl  = CROCK*   mang da lan      (ten goc: akl, thay CDINAUSOR)
+//   ac   = CBIRD*   mang chim        (ten goc: ac)
+//   cn   = CPEOPLE  nguoi choi       (ten goc: cn)
+//
+// Ham theo yeu cau do an:
+//   CGAME()           - Chuan bi du lieu tat ca doi tuong
+//   drawGame()        - Ve tro choi ra man hinh
+//   ~CGAME()          - Huy tai nguyen
+//   getPeople()       - Lay thong tin nguoi
+//   getVehicle()      - Lay danh sach xe
+//   getAnimal()       - Lay danh sach thu
+//   resetGame()       - Thiet lap lai toan bo du lieu
+//   startGame()       - Bat dau vao tro choi
+//   loadGame()        - Tai lai tro choi da luu
+//   saveGame()        - Luu du lieu tro choi
+//   pauseGame()       - Tam dung Thread (nhan HANDLE tu main)
+//   resumeGame()      - Quay lai Thread (nhan HANDLE tu main)
+//   exitGame()        - Thoat Thread    (nhan HANDLE tu main)
+//   updatePosPeople() - Dieu khien di chuyen CPEOPLE
+//   updatePosVehicle()- CTRUCK & CCAR di chuyen
+//   updatePosAnimal() - CROCK & CBIRD di chuyen
+// ================================================================
+class CGAME {
+private:
+    // ---- Mang doi tuong (ten theo yeu cau do an) ----
+    CTRUCK* axt[MAX_TRUCKS];                 // xe tai
+    CCAR* axh[MAX_CARS];                   // xe hoi
+    CROCK* akl[MAX_DINOS];                  // da lan (thay CDINAUSOR)
+    CBIRD* ac[MAX_BIRDS];                   // chim
+    CTRAFFICLIGHT* mLights[MAX_TRUCKS + MAX_CARS];  // den giao thong
 
-#endif 
+    CPEOPLE cn;  // nguoi choi (composition)
+
+    // ---- Trang thai ----
+	int mLevel, mScore, mLives; // level, diem, mang (theo yeu cau do an)
+	int mNumTrucks, mNumCars, mNumDinos, mNumBirds; // so luong xe/thu hien tai tren duong, cap nhat moi level trong InitLanes()
+
+	GameState mState; // Trang thai hien tai cua game (MENU, PLAYING, PAUSED, DEAD, GAMEOVER, WIN, LEVEL_UP)
+
+    // ---- Ham noi bo ----
+	void InitLanes(); // Tao xe/thu/den theo mLevel
+	void loadAllAssets(); // Gan PNG cho tung doi tuong, goi sau khi new doi tuong trong InitLanes()
+	int  GetLaneY(int laneIndex); // Tra ve Y cua lan laneIndex (0-based, chi co xe/thu o lane 0-7, lane 8 la vạch FINISH, lane 9 la vạch START)
+
+	void drawBuildingsZone(RenderWindow& window); // Ve khu vuc nha cao tang o 2 ben duong, chi ve khi mLevel >= 3
+	void drawStreetZone(RenderWindow& window); // Ve khu vuc duong pho o giua, luon ve o moi level
+
+public:
+    CGAME();   // Chuan bi du lieu cho tat ca cac doi tuong
+    ~CGAME();  // Huy tai nguyen da cap phat
+
+    // ----------------------------------------------------------------
+    // CAC HAM THEO YEU CAU DO AN
+    // ----------------------------------------------------------------
+    void     drawGame(RenderWindow& window, Font& font); // Ve tro choi ra man hinh
+    CPEOPLE& getPeople() { return cn; }               // Lay thong tin nguoi
+    CVEHICLE** getVehicle();                             // Lay danh sach xe
+    CANIMAL** getAnimal();                              // Lay danh sach thu
+
+    void resetGame();                        // Thiet lap lai toan bo du lieu nhu luc dau
+    void startGame();                        // Bat dau vao tro choi (reset + khoi tao)
+    void nextLevel();                        // Tang level, tao lai xe/thu kho hon
+
+    void saveGame(const std::string& filename); // Luu du lieu tro choi
+    bool loadGame(const std::string& filename); // Tai lai tro choi da luu
+
+    // FIX: HANDLE duoc dinh nghia boi windows.h da include o tren
+    void pauseGame(HANDLE hThread);   // Tam dung Thread
+    void resumeGame(HANDLE hThread);  // Quay lai Thread
+    void exitGame(HANDLE hThread);    // Thoat Thread (IS_RUNNING=false)
+
+    void updatePosPeople(char key);   // Dieu khien di chuyen CPEOPLE
+    void updatePosVehicle();          // CTRUCK & CCAR di chuyen
+    void updatePosAnimal();           // CROCK & CBIRD di chuyen
+    void updateTrafficLights();       // Cap nhat den giao thong
+
+    // ---- Cap nhat animation sprite (goi moi frame) ----
+	void updateAnimations(float dt); // Cap nhat animation cho nguoi choi, xe, thu, goi moi frame tu main.cpp
+
+    // ---- Kiem tra ----
+	bool checkCollision(); // Kiem tra va cham giua nguoi choi va xe/thu, tra ve true neu co va cham
+	bool checkFinish(); // Kiem tra nguoi choi da den vạch FINISH chua, tra ve true neu da den
+
+    // ---- Man hinh thong bao (tich hop tu Menu.cpp) ----
+	void renderMenu(RenderWindow& window, Font& font); // Ve menu chinh khi mState = MENU
+	void renderPauseMsg(RenderWindow& window, Font& font); // Ve menu tam dung khi mState = PAUSED
+	void renderDeadMsg(RenderWindow& window, Font& font); // Ve menu chet khi mState = DEAD
+	void renderLevelUp(RenderWindow& window, Font& font); // Ve menu tang level khi mState = LEVEL_UP
+	void renderWin(RenderWindow& window, Font& font); // Ve menu chien thang khi mState = WIN
+	void renderGameOver(RenderWindow& window, Font& font); // Ve menu ket thuc khi mState = GAMEOVER
+
+    // ---- Getter trang thai ----
+	int       getLevel() const { return mLevel; } // Tra ve level hien tai
+	int       getScore() const { return mScore; } // Tra ve diem hien tai
+	int       getLives() const { return mLives; } // Tra ve so mang hien tai
+	GameState getState() const { return mState; } // Tra ve trang thai hien tai cua game
+	void      setState(GameState s) { mState = s; } // Dat trang thai hien tai cua game, dung de chuyen giua cac menu va gameplay
+
+    // ---- Them cho main.cpp goi Init() truoc startGame() ----
+	void Init(); // Khoi tao CGAME, load anh, khoi tao lane, goi sau khi new CGAME trong main.cpp, truoc khi startGame() de chuan bi du lieu cho tro choi
+};
+
+#endif
