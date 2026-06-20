@@ -1,165 +1,119 @@
 #pragma once
 #ifndef CANIMAL_H
 #define CANIMAL_H
+
 #include "Utils.h"
-#include <string>
+#include "AnimatedSprite.h"
+#include <SFML/Graphics.hpp>
 using namespace std;
-// =============================================
-// LỚP CƠ SỞ: CANIMAL
-// =============================================
+using namespace sf;
+
+// ================================================================
+// LOP CO SO: CANIMAL (Abstract)
+// Quan ly di chuyen + ve sprite cho chim va da lan
+// ================================================================
 class CANIMAL {
 protected:
     // protected = CBIRD và CDINOSAUR truy cập được trực tiếp
     // Nếu là private thì lớp con phải dùng getter — bất tiện hơn
-
-    int mX, mY;
+	int mX, mY;
     // Tọa độ hiện tại của thú trên màn hình
     // Cập nhật mỗi frame trong Move()
 
-    int mSpeed;
+    int mSpeed;       
     // Số ký tự thú di chuyển mỗi lần gọi Move()
-    // CBIRD nhanh hơn (speed=3), CDINOSAUR chậm hơn (speed=1)
+   // CBIRD nhanh hơn (speed=3), CDINOSAUR chậm hơn (speed=1)
 
-    int mDirection;
-    // Hướng di chuyển: +1 = sang phải, -1 = sang trái
-    // Move(): mX += mDirection * mSpeed
+    int mDirection;  
+	// 1 = di sang phải, -1 = di sang trái  
+	// Cập nhật mỗi frame trong Move()
+    int mWidth;       
+	// Chiều rộng thú (tính theo số ký tự)
+	// Cập nhật mỗi frame trong Move()
 
-    int mWidth;
-    // Độ rộng hình vẽ tính bằng số ký tự
-    // CBIRD = 3 ký tự "~v~", CDINOSAUR = 4 ký tự ">D=="
-    // Dùng trong Clear() để xóa đúng số ký tự
-    // Dùng trong isImpact() của CPEOPLE để tính vùng va chạm
-
-    int mColor;
-    // Màu khi vẽ lên màn hình — dùng hằng COLOR_* từ Utils.h
-    // CBIRD = COLOR_BIRD (11, cyan), CDINOSAUR = COLOR_DINO (13, tím)
-
-    DWORD mLastSoundTime;
-    // Lưu thời điểm lần cuối thú phát tiếng kêu (milliseconds)
-    // Lấy từ GetCurrentTimeMs() trong Utils.h
-    // Tell() kiểm tra: if (GetCurrentTimeMs() - mLastSoundTime > 2000)
-    // → chỉ kêu mỗi 2 giây, không kêu liên tục mỗi frame
-
+    Color mColor; 
+	// Màu sắc thú (Color)
+    AnimatedSprite mAnim;  
+	// Animation của thú, quản lý bởi AnimatedSprite
+	
 public:
     CANIMAL();
-    // Constructor mặc định — khởi tạo giá trị mặc định
-    // mLastSoundTime = 0 để lần đầu chạy game kêu được ngay
+	// Constructor mặc định — CGAME gọi khi khởi tạo mảng thú:
+	// new CBIRD() hoặc new CDINOSAUR() trong CGame.cpp
 
-    CANIMAL(int x, int y, int speed, int dir, int color, int width);
+    CANIMAL(int x, int y, int speed, int dir, Color color, int width);
     // Constructor có tham số — CGAME gọi khi tạo thú:
-    // new CBIRD(x, y, 3, +1) hoặc new CDINOSAUR(x, y, 1, -1)
+   // new CBIRD(x, y, 3, +1) hoặc new CDINOSAUR(x, y, 1, -1)
 
     virtual ~CANIMAL() {}
     // Destructor ảo — bắt buộc khi dùng con trỏ lớp cơ sở CANIMAL*
-    // Đảm bảo khi CGAME gọi delete animals[i] thì destructor
-    // đúng của CBIRD hoặc CDINOSAUR được gọi, tránh memory leak
-    // {} rỗng vì không có tài nguyên động cần giải phóng thêm
+   // Đảm bảo khi CGAME gọi delete animals[i] thì destructor
+   // đúng của CBIRD hoặc CDINOSAUR được gọi, tránh memory leak
+   // {} rỗng vì không có tài nguyên động cần giải phóng thêm
 
     int getX()     const { return mX; }
     // Trả về cột hiện tại
-    // CPEOPLE::isImpact() dùng để so sánh với vị trí người chơi
-
+	// CGAME sẽ dùng getX() để kiểm tra va chạm với người chơi (isImpact)
+    //
     int getY()     const { return mY; }
-    // Trả về dòng hiện tại
-    // CGAME dùng để xác định thú đang ở làn nào
-
+	// Trả về hàng hiện tại
+	// CGAME sẽ dùng getY() để kiểm tra va chạm với người chơi (isImpact)
     int getWidth() const { return mWidth; }
     // Trả về độ rộng hình vẽ
-    // CPEOPLE::isImpact() dùng để tính vùng va chạm:
-    // va chạm khi mX người >= mX thú VÀ <= mX thú + mWidth
+   // CPEOPLE::isImpact() dùng để tính vùng va chạm:
+   // va chạm khi mX người >= mX thú VÀ <= mX thú + mWidth
     void setX(int x) { mX = x; }
-
-    virtual void Move(int screenWidth, int screenHeight);
-    // Di chuyển thú: mX += mDirection * mSpeed
-    // Xử lý wrap màn hình: ra khỏi bên phải → xuất hiện bên trái
-    // virtual = CBIRD/CDINOSAUR có thể override nếu cần di chuyển đặc biệt
-    // (ví dụ CBIRD có thể bay lên xuống thêm theo trục Y)
-
-    virtual void Draw();
-    // Vẽ hình thú tại (mX, mY) bằng PrintAt(mX, mY, GetShape(), mColor)
-    // virtual = lớp con override để vẽ hình riêng với màu riêng
-
-    virtual void Clear();
-    // Xóa hình thú tại vị trí hiện tại bằng ClearPos(mX, mY, mWidth)
-    // Phải gọi Clear() TRƯỚC khi Move(), sau đó mới Draw() lại
-    // virtual = lớp con có thể override nếu cần xóa theo cách riêng
-
+	// CGAME sẽ dùng setX() để cập nhật vị trí thú sau mỗi lần Move()
+	// Không cần setY() vì thú chỉ di chuyển ngang, hàng cố định
+	// CGAME sẽ gọi Move() mỗi frame để cập nhật vị trí thú
+    void loadAssets(const std::string& frame1,
+        const std::string& frame2 = "");
+	// Tải ảnh cho animation của thú, gọi trong constructor của CBIRD/CDINOSAUR
+    void updateAnim(float dt) { mAnim.update(dt); }
+	// Cập nhật animation theo thời gian, gọi mỗi frame từ CGAME.updateAnimations()
+    
+    virtual void Move(int screenWidthCells);
+	// Cập nhật vị trí của thú dựa trên tốc độ và hướng di chuyển
+   
+    virtual void Draw(RenderWindow& window);
+	// Vẽ thú lên cửa sổ, gọi mỗi frame từ CGAME.drawGame()
+ 
     virtual void Tell() = 0;
-    // Pure virtual — CANIMAL không có tiếng kêu mặc định
-    // = 0 nghĩa là: bắt buộc mọi lớp con PHẢI override hàm này
-    // Nếu CBIRD hoặc CDINOSAUR không override Tell() → lỗi compile
-    // Hệ quả: CANIMAL trở thành Abstract Class — không thể new CANIMAL() trực tiếp
-    // Chỉ có thể new CBIRD() hoặc new CDINOSAUR()
-
-    virtual std::string GetShape() const;
-    // Trả về chuỗi ASCII đại diện
-    // CANIMAL trả về chuỗi mặc định (fallback)
-    // CBIRD override: "~v~" (đi phải) hoặc "~^~" (đi trái)
-    // CDINOSAUR override: ">D==" (đi phải) hoặc "==D<" (đi trái)
-    // Không phải pure virtual vì có thể có giá trị mặc định hợp lệ
+	// Phương thức ảo thuần túy (pure virtual) — bắt buộc lớp con phải override
 };
 
-// =============================================
-// LỚP CON: CBIRD — Chim
-// =============================================
+// ================================================================
+// LOP CON: CBIRD - Chim (nho, nhanh)
+// Asset: bird_frame1_48x48.png, bird_frame2_48x48.png
+// ================================================================
 class CBIRD : public CANIMAL {
-    // public inheritance = toàn bộ public/protected của CANIMAL
-    // giữ nguyên quyền truy cập trong CBIRD
-
 public:
     CBIRD();
-    // Constructor mặc định — tạo chim với:
-    // color = COLOR_BIRD (11, cyan), width = 3, speed = 3
-    // Chim nhỏ và nhanh hơn khủng long
-
+	// Constructor mặc định — CGAME gọi khi khởi tạo mảng thú:
+	// new CBIRD() trong CGame.cpp
+    
     CBIRD(int x, int y, int speed, int dir);
-    // Constructor có tham số — CGAME dùng khi khởi tạo theo level
-
-    void Draw()  override;
-    // Vẽ chim tại (mX, mY) bằng PrintAt với COLOR_BIRD
-    // Hình: "~v~" khi bay sang phải, "~^~" khi bay sang trái
-
-    void Clear() override;
-    // Xóa đúng 3 ký tự (width của CBIRD) tại vị trí cũ
-
-    void Tell()  override;
-    // Phát tiếng chim: Beep(1200, 80) — tần số cao (1200Hz), ngắn (80ms)
-    // Kiểm tra mLastSoundTime trước khi Beep() để không kêu mỗi frame
-    // Cập nhật mLastSoundTime = GetCurrentTimeMs() sau khi kêu
-
-    std::string GetShape() const override;
-    // Trả về "~v~" nếu mDirection == +1 (bay phải)
-    // Trả về "~^~" nếu mDirection == -1 (bay trái)
+	// Constructor có tham số — CGAME gọi khi tạo thú:
+	// new CBIRD(x, y, 3, +1) hoặc new CBIRD(x, y, 3, -1)
+    void Tell() override;
+	// Override phương thức ảo thuần túy của CANIMAL, bắt buộc phải có
 };
 
-// =============================================
-// LỚP CON: CDINOSAUR — Khủng long
-// =============================================
-class CDINOSAUR : public CANIMAL {
+// ================================================================
+// LOP CON: CROCK - Da lan (thay the CDINOSAUR)
+// To, cham, lan ngang qua duong
+// Asset: rock_frame1.png, rock_frame2.png
+// ================================================================
+class CROCK : public CANIMAL {
 public:
-    CDINOSAUR();
-    // Constructor mặc định — tạo khủng long với:
-    // color = COLOR_DINO (13, tím), width = 4, speed = 1
-    // Khủng long to và chậm hơn chim
-
-    CDINOSAUR(int x, int y, int speed, int dir);
-    // Constructor có tham số — CGAME dùng khi khởi tạo theo level
-
-    void Draw()  override;
-    // Vẽ khủng long tại (mX, mY) bằng PrintAt với COLOR_DINO
-    // Hình: ">D==" khi chạy phải, "==D<" khi chạy trái
-
-    void Clear() override;
-    // Xóa đúng 4 ký tự (width của CDINOSAUR) tại vị trí cũ
-
-    void Tell()  override;
-    // Phát tiếng khủng long: Beep(300, 200) — tần số thấp (300Hz), dài (200ms)
-    // Nghe trầm và đáng sợ hơn tiếng chim
-    // Cũng kiểm tra mLastSoundTime — kêu mỗi 3 giây thay vì 2 giây như chim
-
-    std::string GetShape() const override;
-    // Trả về ">D==" nếu mDirection == +1 (chạy phải)
-    // Trả về "==D<" nếu mDirection == -1 (chạy trái)
+    CROCK();
+	// Constructor mặc định — CGAME gọi khi khởi tạo mảng thú:
+	// new CROCK() trong CGame.cpp
+    CROCK(int x, int y, int speed, int dir);
+	// Constructor có tham số — CGAME gọi khi tạo thú:
+	// new CROCK(x, y, 1, +1) hoặc new CROCK(x, y, 1, -1)
+    void Tell() override;
+	// Override phương thức ảo thuần túy của CANIMAL, bắt buộc phải có
 };
 
 #endif
