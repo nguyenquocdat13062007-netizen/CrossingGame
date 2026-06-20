@@ -5,119 +5,62 @@
 #include "Utils.h"
 #include "CVehicle.h"
 #include "CAnimal.h"
+#include "AnimatedSprite.h"
+#include <SFML/Graphics.hpp>
 using namespace std;
-// =============================================
-// LỚP CPEOPLE — Người qua đường
-// =============================================
+using namespace sf;
+
+// ================================================================
+// LOP CPEOPLE - Nguoi choi voi sprite PNG + animation di chuyen
+// ================================================================
 class CPEOPLE {
 private:
-    int  mX, mY;
-    // Tọa độ hiện tại của nhân vật trên màn hình console
-   // mX = cột (ngang), mY = dòng (dọc)
-   // Bắt đầu từ giữa màn hình, dòng ROAD_BOTTOM
+	int  mX, mY; // Tọa độ hiện tại của người chơi trên màn hình (mX: cột, mY: hàng)
+	bool mAlive; // true = người chơi còn sống, false = người chơi đã chết
+	bool mFinished; // true = người chơi đã đến vạch FINISH, false = chưa đến vạch FINISH
+	int  mDirection; // 1 = di sang phải, -1 = di sang trái, 0 = đứng yên (không di chuyển)
 
-    bool mAlive;
-	// Trạng thái sống chết của nhân vật
-     // true  = nhân vật còn sống, đang chơi bình thường
-    // false = đã chết do va chạm xe hoặc thú
-
-    bool mFinished;
-	// Trạng thái đã về đích hay chưa
-     // true  = nhân vật đã qua đường thành công (chạm FINISH_Y)
-    // false = chưa qua được, đang trên đường
+	AnimatedSprite mAnim;  // Animation của người chơi, quản lý bởi AnimatedSprite
 
 public:
     CPEOPLE();
-    // Constructor mặc định — tạo nhân vật tại vị trí mặc định
-   // mX = SCREEN_WIDTH / 2 (giữa màn hình), mY = ROAD_BOTTOM
-   // mAlive = true, mFinished = false
-
     CPEOPLE(int startX, int startY);
-    // Constructor có tham số — tạo nhân vật tại vị trí tuỳ chỉnh
-   // Dùng khi loadGame() cần phục hồi vị trí đã lưu của T4
 
-    int  getX() const { return mX; }
-    // Trả về tọa độ cột hiện tại của nhân vật
-   // const ở cuối = hàm này không thay đổi bất kỳ field nào của object
-   // T1 dùng để kiểm tra va chạm trong checkCollision()
+	int  getX()       const { return mX; } // Trả về cột hiện tại của người chơi
+	int  getY()       const { return mY; } // Trả về hàng hiện tại của người chơi
+	bool isAlive()    const { return mAlive; } // Trả về true nếu người chơi còn sống, false nếu đã chết
+	bool isDead()     const { return !mAlive; } // Trả về true nếu người chơi đã chết, false nếu còn sống
+	bool isFinished() const { return mFinished; } // Trả về true nếu người chơi đã đến vạch FINISH, false nếu chưa đến vạch FINISH
 
-    int  getY() const { return mY; }
-    // Trả về tọa độ dòng hiện tại của nhân vật
-   // T4 dùng để lưu vị trí vào GameSaveData khi saveGame()
+    // Load anh sprite nguoi choi
+    // frame1, frame2: 2 frame di chuyen (walk animation)
+	void loadAssets(const std::string& frame1, const std::string& frame2 = ""); // Gọi sau khi new, nếu load thất bại thì animation sẽ không hiển thị nhưng người chơi vẫn hoạt động bình thường
 
-    bool isAlive() const { return mAlive; }
-	// Trả về trạng thái sống chết của nhân vật
-	// T1 dùng để kiểm tra va chạm trong checkCollision()
-	// T4 dùng để lưu trạng thái vào GameSaveData khi saveGame()
+    // Cap nhat animation (goi moi frame)
+	void updateAnim(float dt) { mAnim.update(dt); } // Cập nhật animation theo thời gian, gọi mỗi frame từ CGAME.updatePlayer()
 
-    bool isDead() const { return !mAlive; }
-	// Trả về trạng thái đã chết của nhân vật
-	// T1 dùng để kiểm tra va chạm trong checkCollision()
-	// T4 dùng để lưu trạng thái vào GameSaveData khi saveGame()
+    // Di chuyen - co kiem tra bien man hinh
+	void Up(int step = 1); // Di chuyển người chơi lên trên (giảm mY), step = số ô di chuyển (mặc định 1)
+	void Down(int step = 1); // Di chuyển người chơi xuống dưới (tăng mY), step = số ô di chuyển (mặc định 1)
+	void Left(int step = 1); // Di chuyển người chơi sang trái (giảm mX), step = số ô di chuyển (mặc định 1)
+	void Right(int step = 1); // Di chuyển người chơi sang phải (tăng mX), step = số ô di chuyển (mặc định 1)
 
-    bool isFinished() const { return mFinished; }
-	// Trả về trạng thái đã về đích hay chưa của nhân vật
-	// T1 dùng để kiểm tra khi nhân vật chạm vào điểm kết thúc
-	// T4 dùng để lưu trạng thái vào GameSaveData khi saveGame()
+    // Ve nguoi choi len cua so SFML
+    // font chi dung khi chua co sprite (fallback chu "Y")
+	void Draw(RenderWindow& window, Font& font); // Vẽ người chơi lên cửa sổ, gọi mỗi frame từ CGAME.drawGame()
 
-    void Up(int step = 1);
-    // Di chuyển nhân vật lên trên step dòng (mY -= step)
-   // step = 1 mặc định — có thể truyền 2 để đi nhanh hơn
-   // Có kiểm tra biên: không cho vượt quá ROAD_TOP
+    // Kiem tra va cham
+	bool isImpact(const CVEHICLE* v) const; // Va cham khi mX nguoi >= mX xe VÀ <= mX xe + mWidth, va cham chi tinh khi xe dang di chuyen (khong tinh khi xe dang dung)
+	bool isImpact(const CANIMAL* a)  const; // Va cham khi mX nguoi >= mX thu VÀ <= mX thu + mWidth, va cham chi tinh khi thu dang di chuyen (khong tinh khi thu dang dung)
 
-    void Down(int step = 1);
-    // Di chuyển xuống dưới (mY += step)
-    // Có kiểm tra biên: không cho vượt quá ROAD_BOTTOM
-   
-    void Left(int step = 1);
-    // Di chuyển sang trái (mX -= step)
-    // Có kiểm tra biên: không cho vượt quá cột 0
+    // Kiem tra da den FINISH_Y chua
+	bool checkFinish(); // Dung khi mY nguoi <= FINISH_Y, dat mFinished = true, va tra ve true; nguoc lai tra ve false
 
-    void Right(int step = 1);
-    // Di chuyển sang phải (mX += step)
-    // Có kiểm tra biên: không cho vượt quá SCREEN_WIDTH - 1
+    // Reset ve vi tri ban dau
+	void Reset(int startX = SCREEN_WIDTH / 2, int startY = START_Y); // Dat mX = startX, mY = startY, mAlive = true, mFinished = false, mDirection = 1
 
-    void Draw();
-    // Vẽ ký tự đại diện nhân vật tại (mX, mY) lên màn hình
-    // Dùng PrintAt(mX, mY, "(Y)", COLOR_PLAYER) từ Utils.h
-    // SubThread gọi hàm này mỗi frame trong drawGame()
-   
-    void Clear();
-    // Xóa ký tự nhân vật tại vị trí cũ bằng ClearPos(mX, mY, 3)
-    // Phải gọi Clear() TRƯỚC khi di chuyển, sau đó mới Draw() lại
-    // Tránh để lại "vết ma" trên màn hình
-
-    bool isImpact(const CVEHICLE* v) const;
-    // Kiểm tra nhân vật có đang trùng tọa độ với xe v không
-    // const CVEHICLE* = con trỏ tới xe, không được sửa đổi xe đó
-    // Trả về true nếu mX nằm trong phạm vi xe và mY == v->getY()
-
-    bool isImpact(const CANIMAL* a) const;
-    // Overload của hàm trên — kiểm tra va chạm với thú a
-   // Cùng logic nhưng dùng CANIMAL thay vì CVEHICLE
-   // Đây là ví dụ về function overloading trong OOP
-
-    bool checkFinish();
-    // Kiểm tra mY có bằng FINISH_Y(ROAD_TOP = 3) không
-    // Nếu đúng: đặt mFinished = true và trả về true
-    // CGAME gọi hàm này trong checkCollision() sau mỗi bước di chuyển
-
-    void Reset(int startX = SCREEN_WIDTH / 2, int startY = ROAD_BOTTOM);
-    // Đặt lại nhân vật về vị trí ban đầu
-   // SCREEN_WIDTH / 2 = 80 / 2 = 40 (cột giữa màn hình)
-   // ROAD_BOTTOM = 26 (dòng cuối con đường, khai báo trong Utils.h)
-   // Đặt lại mAlive = true, mFinished = false
-   // CGAME gọi sau khi người chơi qua đường hoặc bắt đầu màn mới
-
-    void Die();
-    // Đặt mAlive = false
-    // Gọi khi phát hiện va chạm trong isImpact()
-    // Sau khi Die(), SubThread ngừng gọi updatePosPeople()
-
-    void DrawDeathEffect();
-    // Hiển thị hiệu ứng chết tại vị trí (mX, mY)
-    // Ví dụ: in "[X]" màu đỏ + Beep(400, 300)
-    // T2 cũng có thể hỗ trợ hàm này bằng âm thanh va chạm
+    // Dat trang thai chet
+	void Die(); // Dat mAlive = false, mDirection = 0, va reset animation ve frame dau tien (mAnim.clear() + mAnim.addFrame(frame1))
 };
 
 #endif
