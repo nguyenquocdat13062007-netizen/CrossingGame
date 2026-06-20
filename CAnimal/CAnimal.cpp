@@ -1,80 +1,53 @@
 #include "CAnimal.h"
-#include <iostream>
-using namespace std;
-// =============================================
+
+// ================================================================
 // CANIMAL
-// =============================================
+// ================================================================
 CANIMAL::CANIMAL()
     : mX(0), mY(10), mSpeed(1), mDirection(1),
-    mWidth(4), mColor(COLOR_BIRD), mLastSoundTime(0) {
+    mWidth(2), mColor(COLOR_BIRD), mAnim(0.2f) {
 }
 
-CANIMAL::CANIMAL(int x, int y, int speed, int dir, int color, int width)
+CANIMAL::CANIMAL(int x, int y, int speed, int dir, Color color, int width)
     : mX(x), mY(y), mSpeed(speed), mDirection(dir),
-    mWidth(width), mColor(color), mLastSoundTime(0) {
+    mWidth(width), mColor(color), mAnim(0.2f) {
 }
 
-void CANIMAL::Move(int screenWidth, int screenHeight) {
-   
+void CANIMAL::loadAssets(const std::string& frame1,
+    const std::string& frame2) {
+	
+
+void CANIMAL::Move(int screenWidthCells) {
+	
 }
 
-void CANIMAL::Draw() {
-   
+void CANIMAL::Draw(RenderWindow& window) {
+
 }
 
-void CANIMAL::Clear() {
-   
-}
-
-std::string CANIMAL::GetShape() const {
-    
-}
-
-// =============================================
-// CBIRD
-// =============================================
-CBIRD::CBIRD() : CANIMAL(0, 12, 2, 1, COLOR_BIRD, 4) {}
+// ================================================================
+// CBIRD - Chim: nho, nhanh, 2 frame vo canh
+// ================================================================
+CBIRD::CBIRD() : CANIMAL(0, 12, 2, 1, COLOR_BIRD, 2) {}
 
 CBIRD::CBIRD(int x, int y, int speed, int dir)
-    : CANIMAL(x, y, speed, dir, COLOR_BIRD, 4) {
-}
-
-void CBIRD::Draw() {
-    if (mX + mWidth < 0 || mX >= SCREEN_WIDTH) return;
-    GotoXY(mX, mY);
-    SetColor(mColor);
-    std::cout << GetShape();
-    ResetColor();
-}
-
-void CBIRD::Clear() {  }
-
-string CBIRD::GetShape() const {
-    
+    : CANIMAL(x, y, speed, dir, COLOR_BIRD, 2) {
 }
 
 void CBIRD::Tell() {
-    
+    // Mo rong am thanh sau
 }
 
-// =============================================
-// CDINOSAUR
-// =============================================
-CDINOSAUR::CDINOSAUR() : CANIMAL(0, 15, 1, -1, COLOR_DINO, 5) {}
+// ================================================================
+// CROCK - Da lan: to, cham, thay the CDINOSAUR
+// Width = 3 o luoi (giong CDINOSAUR cu)
+// ================================================================
+CROCK::CROCK() : CANIMAL(0, 15, 1, -1, COLOR_DINO, 3) {}
 
-CDINOSAUR::CDINOSAUR(int x, int y, int speed, int dir)
-    : CANIMAL(x, y, speed, dir, COLOR_DINO, 5) {
+CROCK::CROCK(int x, int y, int speed, int dir)
+    : CANIMAL(x, y, speed, dir, COLOR_DINO, 3) {
 }
 
-void CDINOSAUR::Draw() {
-   
-}
-
-void CDINOSAUR::Clear() {  }
-
-string CDINOSAUR::GetShape() const {
-}
-
-void CDINOSAUR::Tell() {
-   
+void CROCK::Tell() {
+    // Mo rong am thanh sau
 }
