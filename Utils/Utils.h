@@ -2,94 +2,83 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include <windows.h>
-#include <iostream>
+#pragma warning(push) // 
+#pragma warning(disable: 4275)
+#include <SFML/Graphics.hpp>
+#pragma warning(pop)
 #include <string>
-#include <conio.h>
 using namespace std;
-//------------------------------KÍCH THƯỚC MÀN HÌNH TRÊN CONSOLE------------------------------ 		
-const int SCREEN_WIDTH = 80;   // Chiều rộng 80 ký tự — chuẩn console Windows
-const int SCREEN_HEIGHT = 30;  // Chiều cao 30 dòng
+using namespace sf;
 
-//------------------------------VỊ TRÍ CON ĐƯỜNG TRÊN CONSOLE------------------------------  
-const int ROAD_TOP = 3;  // Dòng bắt đầu của đường
-const int ROAD_BOTTOM = 26;  // Dòng kết thúc của đường
-const int FINISH_Y = ROAD_TOP;  // Đích Đến của người chơi
-const int START_Y = ROAD_BOTTOM;  // Vị trí bắt đầu của người chơi
+//==============================================================
+// KICH THUOC LUOI (GRID)
+//==============================================================
+const int SCREEN_WIDTH = 40; // 40 o luoi ngang
+const int SCREEN_HEIGHT = 24; // 24 o luoi doc
 
-//------------------------------CẤU HÌNH GAME------------------------------
-const int MAX_LEVEL = 5;  // Tổng số cấp độ trong game
-const int MAX_TRUCKS = 3;  // Tối đa 3 xe tải trên console cùng lúc 
-const int MAX_CARS = 4;  // Tối đa 4 xe con trên console cùng lúc
-const int MAX_DINOS = 2;  // Tối đa 2 khủng long trên console cùng lúc
-const int MAX_BIRDS = 3;  // Tối đa 3 con chim trên console cùng lúc
-const int LANE_COUNT = 8;  // Số làn đường (bao gồm cả làn trên cùng và dưới cùng)
+//==============================================================
+// KICH THUOC PIXEL
+//==============================================================
+const int CELL_SIZE = 24; // 1 o luoi = 24 pixel
+const int WINDOW_WIDTH = SCREEN_WIDTH * CELL_SIZE;  // chiều rộng cửa sổ = số ô ngang * kích thước ô 
+const int WINDOW_HEIGHT = SCREEN_HEIGHT * CELL_SIZE;  // chiều cao cửa sổ = số ô dọc * kích thước ô
 
-//------------------------------MÀU SẮC CHO CÁC ĐỐI TƯỢNG TRÊN CONSOLE------------------------------
-const int COLOR_DEFAULT = 7;  // Xám trắng màu chữ mặc định 
-const int COLOR_PLAYER = 14;  // Vàng — nhân vật người chơi
-const int COLOR_TRUCK = 12;  // Đỏ tươi — xe tải
-const int COLOR_CAR = 10;  // Xanh Đỏ tươi — xe tải
-const int COLOR_DINO = 13;  // Tím hồng — khủng long
-const int COLOR_BIRD = 11;  // Xanh cyan — chim
-const int COLOR_ROAD = 8;   // Xám tối — viền đường, nền
-const int COLOR_INFO = 15;  // Trắng sáng — thông tin HUD (điểm, cấp độ)
-const int COLOR_TITLE = 14;  // Vàng — tiêu đề menu (dùng lại màu vàng như player)
+//==============================================================
+// VI TRI DUONG
+//==============================================================
+const int ROAD_TOP = 2; // 2 ô lưới từ trên xuống là đường, 2 ô cuối cùng (22, 23) là vạch START
+const int ROAD_BOTTOM = SCREEN_HEIGHT - 3; // 2 ô lưới từ dưới lên là đường, 2 ô cuối cùng (0, 1) là vạch FINISH
+const int FINISH_Y = ROAD_TOP; // Y của vạch FINISH
+const int START_Y = ROAD_BOTTOM; // Y của vạch START
 
-//------------------------------BIẾN TOÀN CỤC------------------------------
-extern volatile bool IS_RUNNING; // Biến toàn cục để kiểm soát vòng lặp chính của game true = game đang chạy, false = thoát SubThread
-extern volatile char MOVING;  // Biến toàn cục để lưu hướng di chuyển hiện tại của người chơi 'W', 'A', 'S', 'D' hoặc ' ' (không di chuyển)
+//==============================================================
+// CAU HINH GAME
+//==============================================================
+const int MAX_LEVEL = 5; // Mức độ khó tối đa của trò chơi 
+const int MAX_TRUCKS = 3; // Số xe tải tối đa trên đường cùng lúc, theo yêu cầu do an
+const int MAX_CARS = 4; // Số xe hơi tối đa trên đường cùng lúc, theo yêu cầu do an
+const int MAX_DINOS = 2; // Số da lan tối đa trên đường cùng lúc, theo yêu cầu do an
+const int MAX_BIRDS = 3; // Số chim tối đa trên đường cùng lúc, theo yêu cầu do an
+const int LANE_COUNT = 8; // Số làn đường có xe (không tính làn đường trên cùng và dưới cùng chỉ có thú)
 
-//------------------------------HÀM TIỆN ÍCH------------------------------
-void GotoXY(int x, int y);
-// Hàm này di chuyển con trỏ console đến vị trí (x, y) được chỉ định. Đây là một hàm tiện ích để in các đối tượng game tại vị
-// x = cột (ngang), y = dòng (dọc), góc trên trái là (0,0)
-// Dùng trước mỗi lần in ký tự để in đúng vị trí
-//  trên console. Ví dụ, GotoXY(10, 5) sẽ di chuyển con trỏ đến cột 10 và dòng 5 của console.
+//==============================================================
+// BIEN TOAN CUC - dung chung giua main va SubThread
+// (tuong duong IS_RUNNING va MOVING trong ban console goc)
+//==============================================================
+extern volatile bool IS_RUNNING;   // true = SubThread dang chay
+extern volatile char MOVING;       // 'W'/'A'/'S'/'D' hoac ' '
 
-void FixConsoleWindow();
-// Hàm này thực hiện khóa cửa sổ console — không cho người dùng kéo to hoặc maximize
-// Bỏ WS_MAXIMIZEBOX (nút phóng to) và WS_THICKFRAME (viền kéo thay đổi kích thước)
-// Gọi 1 lần trong main() ngay khi khởi động
+//==============================================================
+// MAU SAC
+//==============================================================
+const Color COLOR_BG(20, 20, 20); // Màu nền chung của trò chơi
+const Color COLOR_ROAD(60, 60, 60); // Màu đường, khác với COLOR_BG để tạo độ tương phản
+const Color COLOR_LANE(110, 110, 110); // Màu làn đường
+const Color COLOR_PLAYER(255, 215, 0); // Màu người chơi
+const Color COLOR_TRUCK(220, 40, 40); // Màu xe tải
+const Color COLOR_CAR(40, 200, 80); // Màu xe hơi
+const Color COLOR_DINO(200, 40, 200); // Màu khủng long
+const Color COLOR_BIRD(40, 200, 220); // Màu chim
+const Color COLOR_TEXT(240, 240, 240); // Màu văn bản
+const Color COLOR_TITLE(255, 215, 0); // Màu tiêu đề
+const Color COLOR_FINISH(255, 215, 0); // Màu vạch kết thúc
+const Color COLOR_START(40, 200, 80); // Màu vạch bắt đầu
+const Color COLOR_LIGHT_RED(255, 40, 40); // Màu đỏ nhạt
+const Color COLOR_LIGHT_GREEN(40, 255, 40); // Màu xanh nhạt
+const Color COLOR_BUILDING_BG(35, 32, 30); // Màu nền tòa nhà
+const Color COLOR_STREET_BG(45, 45, 48); // Màu nền đường phố
 
-void SetConsoleSize(int width, int height);
-// Hàm này thiết lập kích thước của cửa sổ console và buffer console
-// Đặt kích thước cửa sổ console theo số ký tự
-// Buffer size cao hơn window 5 dòng để tránh scroll bar xuất hiện
-// Gọi với SetConsoleSize(SCREEN_WIDTH, SCREEN_HEIGHT)
+//==============================================================
+// HAM TIEN ICH
+//==============================================================
+inline float CellToPixel(int cell) {
+	// Chuyen doi tu cell (o luoi) sang pixel
+}
 
-void HideCursor();
-// Hàm này ẩn con trỏ console để không hiển thị khi chơi game
-// Ẩn con trỏ nhấp nháy (dấu gạch dưới)
-// Gọi ngay đầu main() — nếu không ẩn, con trỏ nhảy lung tung khi vẽ game trông rất xấu
-
-void ShowCursor();
-// Hàm này hiện lại con trỏ — gọi khi cần người dùng nhập liệu (ví dụ nhập đường dẫn file save)
-
-void SetColor(int color);
-// Hàm này thiết lập màu sắc cho văn bản console
-// Đặt màu chữ cho tất cả text in ra sau lệnh này
-// Dùng các hằng COLOR_* ở trên, ví dụ: SetColor(COLOR_PLAYER)
-
-void ResetColor();
-// Hàm này đặt lại màu sắc về mặc định (COLOR_DEFAULT)
-// Gọi sau mỗi lần SetColor() để không làm ảnh hưởng text in tiếp theo
-
-void ClearPos(int x, int y, int width = 1);
-// Xóa một đoạn width ký tự tại vị trí (x,y) bằng cách in đè bằng dấu cách
-// QUAN TRỌNG: T2 và T3 dùng hàm này để xóa vết xe/thú cũ trước khi vẽ ở vị trí mới
-// Ví dụ: ClearPos(oldX, y, 4) xóa xe hơi rộng 4 ký tự tại vị trí cũ
-
-void PrintAt(int x, int y, const std::string& text, int color = COLOR_DEFAULT);
-// Hàm này in một chuỗi text tại vị trí (x,y) với màu sắc color
-// Gộp GotoXY + SetColor + cout + ResetColor vào 1 lệnh cho tiện
-// Ví dụ: PrintAt(10, 5, "[=>]", COLOR_CAR) — vẽ xe hơi màu xanh tại (10,5)
-// T2, T3, T5 đều dùng hàm này trong Draw() của từng lớp
-
-DWORD GetCurrentTimeMs();
-// Hàm này trả về thời gian hiện tại tính bằng milliseconds kể từ khi hệ thống khởi động
-// Trả về thời gian hiện tại tính bằng milliseconds (từ lúc khởi động Windows)
-// T2 có thể dùng để làm timer cho CTRAFFICLIGHT thay vì đếm frame
-// Ví dụ: if(GetCurrentTimeMs() - lastSwitch > 3000) { đổi đèn }
+inline RectangleShape MakeShape(int x, int y, int widthCells, Color color) {
+	// Tao RectangleShape voi vi tri (x, y) tinh theo o luoi, chieu rong widthCells o, mau color
+	// Tra ve RectangleShape da duoc cau hinh
+	// Note: RectangleShape se duoc ve voi position la (x, y) tinh theo pixel, size la (widthCells * CELL_SIZE, CELL_SIZE)
+}
 
 #endif
