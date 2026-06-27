@@ -47,13 +47,30 @@ public:
     }
 
     void clear() {
-		// Xóa tất cả frame và reset sprite 
+		mFrames.clear();
+        mSprite.reset();
     }
 
     bool addFrame(const string& filename) {
         // Them 1 frame anh vao animation tu file PNG
         // - Load Texture tu duong dan filename
         // - Neu load that bai (file khong ton tai / sai ten): return false
+        Texture tex;
+
+        if (!tex.loadFromFile(filename)) {
+            return false;
+		}
+
+		mFrames.push_back(tex);
+
+
+        if (!mSprite.has_value()) {
+            mSprite.emplace(mFrames[0]);
+		}
+        
+        return true;
+
+
         // - Neu thanh cong: push vao mFrames, return true
         // - Frame dau tien duoc them: dat lam frame hien tai (index 0)
         // Goi bao nhieu lan = bao nhieu frame animation
@@ -61,6 +78,9 @@ public:
     }
 
     bool isLoaded() const {
+
+		return !mFrames.empty();
+
         // Kiem tra xem AnimatedSprite da co anh chua
         // Return true  = da load it nhat 1 frame -> co the Draw()
         // Return false = chua co frame nao        -> Draw() se dung fallback mau sac
@@ -69,6 +89,23 @@ public:
     }
 
     void update(float dt) {
+
+        // Có 1 ảnh hoặc không có ảnh thì không cần lật
+        if (mFrames.size() <= 1) return;
+
+        mElapsed += dt; // Cộng dồn thời gian trôi qua
+
+        if (mElapsed >= mFrameTime) {
+            // Chuyển sang frame kế tiếp, quay vòng về 0 nếu đụng ranh giới
+            mCurrentFrame = (mCurrentFrame + 1) % mFrames.size();
+            mElapsed = 0.f; // Reset đồng hồ bấm giờ
+
+            // Cập nhật lại bức ảnh mới vào khung tranh
+            if (mSprite.has_value()) {
+                mSprite->setTexture(mFrames[mCurrentFrame]);
+            }
+        }
+
         // Cap nhat frame animation theo thoi gian thuc
         // dt = thoi gian frame hien tai (giay), lay tu Clock.restart()
         // - Cong dt vao mElapsed (bieu tham so dem thoi gian)
@@ -81,6 +118,35 @@ public:
 
     void draw(RenderWindow& window, float px, float py, int widthCells = 1, int heightCells = 1, bool flipX = false)
     {
+
+        if (!isLoaded() || !mSprite.has_value()) return;
+
+        // Giả sử CELL_SIZE là hằng số kích thước ô lưới (ví dụ: 50 pixel)
+        // Bạn cần thay thế CELL_SIZE bằng biến hệ thống của nhóm bạn
+        const float CELL_SIZE = 50.0f;
+
+        // Lấy kích thước gốc của bức ảnh
+        FloatRect bounds = mSprite->getLocalBounds();
+
+        // Tính toán tỷ lệ phóng to/thu nhỏ (Scale) để ảnh vừa khít ô lưới
+        float scaleX = (widthCells * CELL_SIZE) / bounds.width;
+        float scaleY = (heightCells * CELL_SIZE) / bounds.height;
+
+        // Lật ảnh nếu nhân vật đi sang trái
+        if (flipX) {
+            mSprite->setScale(-scaleX, scaleY);
+            // Khi lật âm trục X, gốc tọa độ bị ngược, phải dịch chuyển qua phải một chút
+            mSprite->setPosition(px + (widthCells * CELL_SIZE), py);
+        }
+        else {
+            mSprite->setScale(scaleX, scaleY);
+            mSprite->setPosition(px, py);
+        }
+
+        // Vẽ ra màn hình
+        window.draw(*mSprite);
+
+
         // Ve frame hien tai len cua so SFML tai vi tri pixel (px, py)
         // px, py     : toa do pixel goc trai tren cua doi tuong
         //              Lay tu CellToPixel(mX), CellToPixel(mY)
@@ -96,6 +162,13 @@ public:
     }
 
     void reset() {
+
+        mCurrentFrame = 0;
+        mElapsed = 0.f;
+        if (isLoaded() && mSprite.has_value()) {
+            mSprite->setTexture(mFrames[0]);
+        }
+
         // Dat lai animation ve frame dau tien (index 0)
         // Reset mCurrentFrame = 0
         // Reset mElapsed = 0 (xoa thoi gian dem da tich luy)
