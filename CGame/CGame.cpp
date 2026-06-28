@@ -21,7 +21,7 @@ volatile char MOVING = ' ';
 // ================================================================
 // CONSTRUCTOR & DESTRUCTOR
 // ================================================================
-CGAME::CGAME(): mLevel(1), mScore(0), mLives(3),mNumTrucks(0), mNumCars(0), mNumDinos(0), mNumBirds(0),mState(GameState::MENU)
+CGAME::CGAME() : mLevel(1), mScore(0), mLives(3), mNumTrucks(0), mNumCars(0), mNumDinos(0), mNumBirds(0), mState(GameState::MENU)
 // khoi tao constructor co dinh voi level 1 0 diem 3 mang 0 xe 0 animal va xuat hien o giao dien menu dau tien 
 {
 	for (int i = 0; i < MAX_TRUCKS; i++)
@@ -46,7 +46,7 @@ CGAME::~CGAME() {
 	for (int i = 0; i < MAX_BIRDS; i++)
 		delete ac[i];
 	for (int i = 0; i < MAX_TRUCKS + MAX_CARS; i++)
-		delete mLights[i] ;
+		delete mLights[i];
 }
 
 // ================================================================
@@ -55,10 +55,10 @@ CGAME::~CGAME() {
 // getAnimal()  -> CANIMAL**
 // ================================================================
 CVEHICLE** CGAME::getVehicle() {
-    // Tra ve mang con tro axt axh bang mang khac 
+	// Tra ve mang con tro axt axh bang mang khac 
 	static CVEHICLE* a[MAX_TRUCKS + MAX_CARS];
 
-	int idx = 0; 
+	int idx = 0;
 	for (int i = 0; i < mNumTrucks; i++)
 		a[idx++] = axt[i];
 	for (int i = 0; i < mNumCars; i++)
@@ -93,7 +93,7 @@ void CGAME::InitLanes() {
 	{
 		delete axt[i];
 		axt[i] = nullptr;
-   }
+	}
 	for (int i = 0; i < MAX_CARS; i++)
 	{
 		delete axh[i];
@@ -133,7 +133,7 @@ void CGAME::InitLanes() {
 	mNumBirds = min(mNumBirds, LANE_COUNT - used);
 	used += mNumBirds;
 	mNumDinos = min(mNumDinos, LANE_COUNT - used);
-	used += mNumDinos; 
+	used += mNumDinos;
 	int BaseSpeed = 1 + (mLevel - 1) / 2;
 
 	for (int i = 0; i < mNumTrucks; i++)
@@ -159,7 +159,7 @@ void CGAME::InitLanes() {
 		int y = GetLaneY(mNumTrucks + mNumCars + i);
 		int dir = (i % 2 == 0) ? 1 : -1;
 		int x = (dir == 1) ? 0 : SCREEN_WIDTH - 3;
-		akl[i] = new CROCK(x, y, BaseSpeed, dir);	
+		akl[i] = new CROCK(x, y, BaseSpeed, dir);
 	}
 
 	for (int i = 0; i < mNumBirds; i++)
@@ -170,13 +170,13 @@ void CGAME::InitLanes() {
 		ac[i] = new CBIRD(x, y, BaseSpeed, dir);
 	}
 	loadAllAssets();
-} 
+}
 
 // ================================================================
 // LOAD ALL ASSETS - Gan PNG cho tung doi tuong
 // ================================================================
 void CGAME::loadAllAssets() {
-	cn.loadAssets("Assets/player1.png","Assets/player2.png");
+	cn.loadAssets("Assets/player1.png", "Assets/player2.png");
 	for (int i = 0; i < mNumTrucks; i++)
 	{
 		if (axt[i] != nullptr)
@@ -250,7 +250,7 @@ void CGAME::updateAnimations(float dt) {
 			ac[i]->updateAnim(dt);
 		}
 	}
-	
+
 }
 
 // ================================================================
@@ -289,12 +289,12 @@ void CGAME::nextLevel() {
 // ================================================================
 void CGAME::pauseGame(HANDLE hThread) {
 	SuspendThread(hThread);
-		mState = GameState::PAUSED;
+	mState = GameState::PAUSED;
 
 }
 
 void CGAME::resumeGame(HANDLE hThread) {
-	if (mState == GameState::PAUSED) 
+	if (mState == GameState::PAUSED)
 	{
 		mState = GameState::PLAYING;
 		ResumeThread(hThread);
@@ -367,11 +367,11 @@ void CGAME::updateTrafficLights() {
 		{
 			continue;
 		}
-			bool wasRed = mLights[i]->isRed();
-			mLights[i]->Update();
-				bool isNowRed = mLights[i]->isRed();
-			int laneY = (i < mNumTrucks) ? (axt[i] != nullptr ? axt[i]->getY() : -1) : (axh[i - mNumTrucks] ? axh[i - mNumTrucks]->getY() : -1);
-		
+		bool wasRed = mLights[i]->isRed();
+		mLights[i]->Update();
+		bool isNowRed = mLights[i]->isRed();
+		int laneY = (i < mNumTrucks) ? (axt[i] != nullptr ? axt[i]->getY() : -1) : (axh[i - mNumTrucks] ? axh[i - mNumTrucks]->getY() : -1);
+
 		if (!wasRed && isNowRed)
 		{
 			for (int j = 0; j < mNumTrucks; j++)
@@ -468,9 +468,9 @@ bool CGAME::checkFinish() {
 // Nhan them RenderWindow& vi SFML can window de ve
 // ================================================================
 void CGAME::drawGame(RenderWindow& window, Font& font) {
-    // ---------- 1) Background ----------
-    static Texture bgTex;
-    static bool bgLoaded = false, bgTried = false;
+	// ---------- 1) Background ----------
+	static Texture bgTex;
+	static bool bgLoaded = false, bgTried = false;
 	if (!bgTried)
 	{
 		bgTried = true;
@@ -490,36 +490,36 @@ void CGAME::drawGame(RenderWindow& window, Font& font) {
 
 	}
 
-    // ---------- 2) Nen duong ----------
+	// ---------- 2) Nen duong ----------
 	RectangleShape road;
 	road.setSize(Vector2f((float)WINDOW_WIDTH, (float)((ROAD_BOTTOM - ROAD_TOP + 1) * CELL_SIZE)));
 	road.setPosition(Vector2f(0.f, CellToPixel(ROAD_TOP)));
 	//road.setFillColor(bgLoaded ? Color )
 
-    // ---------- 3) ve lane đại diện cho FINISH va START ----------
-   
+	// ---------- 3) ve lane đại diện cho FINISH va START ----------
 
-    // ---------- 4) Ve xe, da lan, chim ----------
-    
 
-    // ---------- 5) Den giao thong ----------
-    
-    // ---------- 6) Nguoi choi ----------
-    
+	// ---------- 4) Ve xe, da lan, chim ----------
 
-    // ---------- 7) HUD ----------
-    
+
+	// ---------- 5) Den giao thong ----------
+
+	// ---------- 6) Nguoi choi ----------
+
+
+	// ---------- 7) HUD ----------
+
 }
 
 // ================================================================
 // DRAWBUILDINGSZONE / DRAWSTREETZONE
 // ================================================================
 void CGAME::drawBuildingsZone(RenderWindow& window) {
-	
+
 }
 
 void CGAME::drawStreetZone(RenderWindow& window) {
-	
+
 }
 
 // ================================================================
@@ -528,7 +528,7 @@ void CGAME::drawStreetZone(RenderWindow& window) {
 // -> Giu ten ham, doi kieu tham so thanh string cho thuc te hon
 // ================================================================
 void CGAME::saveGame(const string& filename) {
-	
+
 }
 
 bool CGAME::loadGame(const string& filename) {
@@ -537,29 +537,173 @@ bool CGAME::loadGame(const string& filename) {
 // ================================================================
 // MENU VA THONG BAO (tich hop tu Menu.cpp)
 // ================================================================
-static void DrawOverlayBox(RenderWindow& window, float x, float y, float w, float h, Color borderColor) {
+static void DrawOverlayBox(RenderWindow& window, float w, float h, Color borderColor) {
+	//Tạo hình chữ nhật
+	RectangleShape box(Vector2f(w, h));
 
+	// Lấy kích thước cửa sổ
+	Vector2u winSize = window.getSize();
+
+	// Dời điểm neo của hình chữ nhật vào chính giữa nó
+	box.setOrigin(w / 2.0f, h / 2.0f);
+
+	// Đặt hình chữ nhật vào chính giữa màn hình
+	box.setPosition(winSize.x / 2.0f, winSize.y / 2.0f);
+
+	// Đổ màu và viền
+	box.setFillColor(Color(0, 0, 0, 200));
+	box.setOutlineThickness(4.f);
+	box.setOutlineColor(borderColor);
+
+	window.draw(box);
+}
+
+//Căn giữa text với khung render và màn hình
+static void CenterTextAt(Text& text, float targetX, float targetY) {
+	// Lấy kích thước của text
+	FloatRect bounds = text.getLocalBounds();
+
+	// Dời tâm text vào chính giữa
+	text.setOrigin(bounds.left + bounds.width / 2.0f, bounds.top + bounds.height / 2.0f);
+
+	// Đặt text vào tọa độ mong muốn
+	text.setPosition(targetX, targetY);
 }
 
 void CGAME::renderMenu(RenderWindow& window, Font& font) {
+	//Lấy kích thước màn hình hiện tại làm mốc
+	Vector2u winSize = window.getSize();
+	float centerX = winSize.x / 2.0f;
+	float centerY = winSize.y / 2.0f;
 
+	// Vẽ khung nền (Rộng 400, cao 300) tự động center
+	DrawOverlayBox(window, 400.f, 300.f, Color::Green);
+
+	// Tiêu đề
+	Text title("CROSSING GAME", font, 40);
+	title.setFillColor(Color::Yellow);
+	CenterTextAt(title, centerX, centerY - 100.f); // Đặt cao hơn tâm màn hình 100px
+
+	// menu options
+	Text opt1("1. New Game", font, 25);
+	opt1.setFillColor(Color::White);
+	CenterTextAt(opt1, centerX, centerY - 20.f);
+
+	Text opt2("2. Load Game", font, 25);
+	opt2.setFillColor(Color::White);
+	CenterTextAt(opt2, centerX, centerY + 30.f);
+
+	Text opt3("3. Exit", font, 25);
+	opt3.setFillColor(Color::White);
+	CenterTextAt(opt3, centerX, centerY + 80.f);
+
+	// Vẽ ra màn hình
+	window.draw(title);
+	window.draw(opt1);
+	window.draw(opt2);
+	window.draw(opt3);
 }
 
 void CGAME::renderPauseMsg(RenderWindow& window, Font& font) {
-	
+
+	Vector2u winSize = window.getSize();
+	float centerX = winSize.x / 2.0f;
+	float centerY = winSize.y / 2.0f;
+
+	DrawOverlayBox(window, 350.f, 200.f, Color::Blue);
+
+	Text title("PAUSED", font, 45);
+	title.setFillColor(Color::Blue);
+	CenterTextAt(title, centerX, centerY - 30.f);
+
+	Text prompt("Press P to resume", font, 25);
+	prompt.setFillColor(Color::Blue);
+	CenterTextAt(prompt, centerX, centerY + 40.f);
+
+	window.draw(title);
+	window.draw(prompt);
 }
+
 void CGAME::renderDeadMsg(RenderWindow& window, Font& font) {
+
+	Vector2u winSize = window.getSize();
+	float centerX = winSize.x / 2.0f;
+	float centerY = winSize.y / 2.0f;
+
+	DrawOverlayBox(window, 400.f, 300.f, Color::Red);
+
+	Text title("YOU DIED", font, 45);
+	title.setFillColor(Color::Red);
+	CenterTextAt(title, centerX, centerY - 30.f);
+
+	Text prompt("Press Y to restart", font, 25);
+	prompt.setFillColor(Color::White);
+	CenterTextAt(prompt, centerX, centerY + 40.f);
+
+	window.draw(title);
+	window.draw(prompt);
 
 }
 
 void CGAME::renderLevelUp(RenderWindow& window, Font& font) {
-	
+
+	Vector2u winSize = window.getSize();
+	float centerX = winSize.x / 2.0f;
+	float centerY = winSize.y / 2.0f;
+
+	DrawOverlayBox(window, 400.f, 250.f, Color::Magenta);
+
+	Text title("LEVELED UP", font, 45);
+	title.setFillColor(Color::Magenta);
+	CenterTextAt(title, centerX, centerY - 30.f);
+
+	window.draw(title);
 }
 
 void CGAME::renderWin(RenderWindow& window, Font& font) {
-	
+	Vector2u winSize = window.getSize();
+	float centerX = winSize.x / 2.0f;
+	float centerY = winSize.y / 2.0f;
+
+	DrawOverlayBox(window, 500.f, 250.f, Color::Yellow);
+
+	Text title("VICTORY!", font, 55);
+	title.setFillColor(Color::Yellow);
+	CenterTextAt(title, centerX, centerY - 40.f);
+
+	Text prompt("You have crossed all the roads!", font, 25);
+	prompt.setFillColor(Color::White);
+	CenterTextAt(prompt, centerX, centerY + 20.f);
+
+	Text exitPrompt("Press 'ESC' to Exit", font, 20);
+	exitPrompt.setFillColor(Color::Cyan);
+	CenterTextAt(exitPrompt, centerX, centerY + 70.f);
+
+	window.draw(title);
+	window.draw(prompt);
+	window.draw(exitPrompt);
 }
 
 void CGAME::renderGameOver(RenderWindow& window, Font& font) {
-	
+	Vector2u winSize = window.getSize();
+	float centerX = winSize.x / 2.0f;
+	float centerY = winSize.y / 2.0f;
+
+	DrawOverlayBox(window, 450.f, 250.f, Color::Red);
+
+	Text title("GAME OVER", font, 55);
+	title.setFillColor(Color::Red);
+	CenterTextAt(title, centerX, centerY - 40.f);
+
+	Text prompt("You ran out of lives.", font, 25);
+	prompt.setFillColor(Color::White);
+	CenterTextAt(prompt, centerX, centerY + 20.f);
+
+	Text exitPrompt("Press 'ESC' to Exit", font, 20);
+	exitPrompt.setFillColor(Color(200, 200, 200));
+	CenterTextAt(exitPrompt, centerX, centerY + 70.f);
+
+	window.draw(title);
+	window.draw(prompt);
+	window.draw(exitPrompt);
 }
