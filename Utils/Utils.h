@@ -73,12 +73,18 @@ const Color COLOR_STREET_BG(45, 45, 48); // Màu nền đường phố
 //==============================================================
 inline float CellToPixel(int cell) {
 	// Chuyen doi tu cell (o luoi) sang pixel
+	return (float)(cell * CELL_SIZE);
 }
 
 inline RectangleShape MakeShape(int x, int y, int widthCells, Color color) {
 	// Tao RectangleShape voi vi tri (x, y) tinh theo o luoi, chieu rong widthCells o, mau color
 	// Tra ve RectangleShape da duoc cau hinh
 	// Note: RectangleShape se duoc ve voi position la (x, y) tinh theo pixel, size la (widthCells * CELL_SIZE, CELL_SIZE)
+	RectangleShape shape;
+	shape.setSize(Vector2f((float)(widthCells * CELL_SIZE - 2), (float)(widthCells * CELL_SIZE - 2)));
+	shape.setPosition(Vector2f(CellToPixel(x) + 1.f, CellToPixel(y) + 1.f));
+	shape.setFillColor(color);
+	return shape;
 }
 
 #endif
