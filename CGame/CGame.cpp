@@ -9,6 +9,7 @@
 #include "CGame.h"
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 using namespace std;
 using namespace sf;
 // ================================================================
@@ -528,11 +529,91 @@ void CGAME::drawStreetZone(RenderWindow& window) {
 // -> Giu ten ham, doi kieu tham so thanh string cho thuc te hon
 // ================================================================
 void CGAME::saveGame(const string& filename) {
+	ofstream ofs(filename);
+	if (!ofs.is_open()) std::cout << "Khong the luu file" << '\n'; return;
 
+	ofs << mLevel << '\n';
+	ofs << mScore << '\n';
+	ofs << mLives << '\n';
+	ofs << cn.getX() << '\n';
+	ofs << cn.getY() << '\n';
+
+	ofs << mNumTrucks << '\n';
+	for (int i = 0; i < mNumTrucks; i++) {
+		ofs << (axt[i] ? axt[i]->getX() : 0) << '\n';
+	}
+
+	ofs << mNumCars << '\n';
+	for (int i = 0; i < mNumCars; i++) {
+		ofs << (axh[i] ? axh[i]->getX() : 0) << '\n';
+	}
+
+	ofs << mNumDinos << '\n';
+	for (int i = 0; i < mNumDinos; i++) {
+		ofs << (akl[i] ? akl[i]->getX() : 0) << '\n';
+	}
+
+	ofs << mNumBirds << '\n';
+	for (int i = 0; i < mNumBirds; i++) {
+		ofs << (ac[i] ? ac[i]->getX() : 0) << '\n';
+	}
+
+	ofs.close();
 }
 
 bool CGAME::loadGame(const string& filename) {
+	ifstream ifs(filename);
+	if (!ifs.is_open()) cout << "Khong the mo file save" << '\n'; return false;
 
+	int level, score, live, px, py;
+	ifs >> level;
+	ifs >> score;
+	ifs >> live;
+	ifs >> px;
+	ifs >> py;
+
+	if (!ifs.good()) {
+		ifs.close();
+		return false;
+	}
+
+	mLevel = level;
+	mScore = score;
+	mLives = live;
+
+	InitLanes();
+
+	cn.Reset(px, py);
+
+	// n: số lượng vật thể (car, truck,...) - x: các vật thể
+	int n, x;
+
+	ifs >> n;
+	for (int i = 0; i < n; i++) {
+		ifs >> x;
+		if (i < mNumTrucks && axt[i]) axt[i]->setX(x); //update truck
+	}
+
+	ifs >> n;
+	for (int i = 0; i < n; i++) {
+		ifs >> x;
+		if (i < mNumCars && axh[i]) axh[i]->setX(x);
+	}
+
+	ifs >> n;
+	for (int i = 0; i < n; i++) {
+		ifs >> x;
+		if (i < mNumDinos && akl[i]) akl[i]->setX(x);
+	}
+
+	ifs >> n;
+	for (int i = 0; i < n; i++) {
+		ifs >> x;
+		if (i < mNumBirds && ac[i]) ac[i]->setX(x);
+	}
+
+	ifs.close();
+	return true;
 }
 // ================================================================
 // MENU VA THONG BAO (tich hop tu Menu.cpp)
@@ -593,7 +674,11 @@ void CGAME::renderMenu(RenderWindow& window, Font& font) {
 	opt2.setFillColor(Color::White);
 	CenterTextAt(opt2, centerX, centerY + 30.f);
 
-	Text opt3("3. Exit", font, 25);
+	Text opt3("3. Settings", font, 25.f);
+	opt3.setFillColor(Color::White);
+	CenterTextAt(opt3, centerX, centerY + 60.f);
+
+	Text opt4("4. Exit", font, 25);
 	opt3.setFillColor(Color::White);
 	CenterTextAt(opt3, centerX, centerY + 80.f);
 
@@ -602,6 +687,7 @@ void CGAME::renderMenu(RenderWindow& window, Font& font) {
 	window.draw(opt1);
 	window.draw(opt2);
 	window.draw(opt3);
+	window.draw(opt4);
 }
 
 void CGAME::renderPauseMsg(RenderWindow& window, Font& font) {
@@ -636,11 +722,16 @@ void CGAME::renderDeadMsg(RenderWindow& window, Font& font) {
 	title.setFillColor(Color::Red);
 	CenterTextAt(title, centerX, centerY - 30.f);
 
-	Text prompt("Press Y to restart", font, 25);
+	Text promtLive("Remaining lives " + to_string(mLives), font, 25);
+	promtLive.setFillColor(Color::White);
+	CenterTextAt(promtLive, centerX, centerY + 25.f);
+
+	Text prompt("Press Y to continue", font, 25);
 	prompt.setFillColor(Color::White);
 	CenterTextAt(prompt, centerX, centerY + 40.f);
 
 	window.draw(title);
+	window.draw(promtLive);
 	window.draw(prompt);
 
 }
@@ -653,7 +744,7 @@ void CGAME::renderLevelUp(RenderWindow& window, Font& font) {
 
 	DrawOverlayBox(window, 400.f, 250.f, Color::Magenta);
 
-	Text title("LEVELED UP", font, 45);
+	Text title("LEVELED UP! -> Level " + to_string(mLevel), font, 45);
 	title.setFillColor(Color::Magenta);
 	CenterTextAt(title, centerX, centerY - 30.f);
 
@@ -671,11 +762,11 @@ void CGAME::renderWin(RenderWindow& window, Font& font) {
 	title.setFillColor(Color::Yellow);
 	CenterTextAt(title, centerX, centerY - 40.f);
 
-	Text prompt("You have crossed all the roads!", font, 25);
+	Text prompt("Fianal scores " + to_string(mScore), font, 25);
 	prompt.setFillColor(Color::White);
 	CenterTextAt(prompt, centerX, centerY + 20.f);
 
-	Text exitPrompt("Press 'ESC' to Exit", font, 20);
+	Text exitPrompt("Press any keys to Exit", font, 20);
 	exitPrompt.setFillColor(Color::Cyan);
 	CenterTextAt(exitPrompt, centerX, centerY + 70.f);
 
@@ -693,13 +784,14 @@ void CGAME::renderGameOver(RenderWindow& window, Font& font) {
 
 	Text title("GAME OVER", font, 55);
 	title.setFillColor(Color::Red);
+	title.setStyle(Text::Bold);
 	CenterTextAt(title, centerX, centerY - 40.f);
 
-	Text prompt("You ran out of lives.", font, 25);
+	Text prompt("Finals scores " + to_string(mScore), font, 25);
 	prompt.setFillColor(Color::White);
 	CenterTextAt(prompt, centerX, centerY + 20.f);
 
-	Text exitPrompt("Press 'ESC' to Exit", font, 20);
+	Text exitPrompt("Press anny keys to Exit", font, 20);
 	exitPrompt.setFillColor(Color(200, 200, 200));
 	CenterTextAt(exitPrompt, centerX, centerY + 70.f);
 
