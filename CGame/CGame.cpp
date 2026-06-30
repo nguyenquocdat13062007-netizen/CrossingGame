@@ -679,7 +679,7 @@ void CGAME::renderMenu(RenderWindow& window, Font& font) {
 	CenterTextAt(opt3, centerX, centerY + 60.f);
 
 	Text opt4("4. Exit", font, 25);
-	opt3.setFillColor(Color::White);
+	opt4.setFillColor(Color::White);
 	CenterTextAt(opt3, centerX, centerY + 80.f);
 
 	// Vẽ ra màn hình
