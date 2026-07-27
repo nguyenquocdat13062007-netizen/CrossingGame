@@ -469,32 +469,57 @@ bool CGAME::checkFinish() {
 // Nhan them RenderWindow& vi SFML can window de ve
 // ================================================================
 void CGAME::drawGame(RenderWindow& window, Font& font) {
-	// ---------- 1) Background ----------
-	static Texture bgTex;
+	// ---------- 1 & 2) Xếp gạch Background & Nền đường ----------
+	static Texture tilesetTex;
 	static bool bgLoaded = false, bgTried = false;
-	if (!bgTried)
-	{
+
+	// Nạp file 96x48
+	if (!bgTried) {
 		bgTried = true;
-		bgLoaded = bgTex.loadFromFile("Asset/background_base.png");
-		if (bgLoaded)
-		{
-			bgTex.setSmooth(true);
+		bgLoaded = tilesetTex.loadFromFile("Assets/background_base.png");
+		if (bgLoaded) {
+			tilesetTex.setSmooth(true);
 		}
 	}
-	if (bgLoaded)
-	{
-		Sprite bgSprite(bgTex);
-		auto sz = bgTex.getSize();
-		bgSprite.setScale(Vector2f((float)WINDOW_WIDTH / sz.x, (float)WINDOW_HEIGHT / sz.y));
-		bgSprite.setPosition(Vector2f(0.f, 0.f));
-		window.draw(bgSprite);
 
+	if (bgLoaded) {
+		Sprite tileSprite(tilesetTex);
+		// Tính tỷ lệ để ép viên gạch 48px chui vừa khít vào ô lưới của game
+		float scaleFactor = (float)CELL_SIZE / 48.0f;
+		tileSprite.setScale(scaleFactor, scaleFactor);
+
+		// Vòng lặp duyệt qua toàn bộ ma trận màn hình ngang dọc
+		for (int y = 0; y < SCREEN_HEIGHT; y++) {
+			for (int x = 0; x < SCREEN_WIDTH; x++) {
+
+				// ==========================================
+				// ĐÂY CHÍNH LÀ PHẦN "TOÁN HỌC" ĐỂ CHỌN GẠCH:
+				// So sánh tọa độ y hiện tại với ROAD_TOP và ROAD_BOTTOM
+				// ==========================================
+				if (y >= ROAD_TOP && y <= ROAD_BOTTOM) {
+					// Nằm trong vùng xe chạy -> Cắt lấy viên gạch bên PHẢI (Đường)
+					tileSprite.setTextureRect(IntRect(48, 0, 48, 48));
+				}
+				else {
+					// Nằm ngoài vùng xe chạy -> Cắt lấy viên gạch bên TRÁI (Vỉa hè)
+					tileSprite.setTextureRect(IntRect(0, 0, 48, 48));
+				}
+
+				// Tính tọa độ điểm vẽ trên màn hình
+				float px = (float)(x * CELL_SIZE);
+				float py = (float)(y * CELL_SIZE);
+				tileSprite.setPosition(px, py);
+
+				// In viên gạch ra
+				window.draw(tileSprite);
+			}
+		}
 	}
 
 	// ---------- 2) Nen duong ----------
-	RectangleShape road;
+	/*RectangleShape road;
 	road.setSize(Vector2f((float)WINDOW_WIDTH, (float)((ROAD_BOTTOM - ROAD_TOP + 1) * CELL_SIZE)));
-	road.setPosition(Vector2f(0.f, CellToPixel(ROAD_TOP)));
+	road.setPosition(Vector2f(0.f, CellToPixel(ROAD_TOP)));*/
 	//road.setFillColor(bgLoaded ? Color )
 
 	// ---------- 3) ve lane đại diện cho FINISH va START ----------
