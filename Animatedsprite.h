@@ -121,16 +121,14 @@ public:
 
         if (!isLoaded() || !mSprite.has_value()) return;
 
-        // Giả sử CELL_SIZE là hằng số kích thước ô lưới (ví dụ: 50 pixel)
-        // Bạn cần thay thế CELL_SIZE bằng biến hệ thống của nhóm bạn
-        const float CELL_SIZE = 50.0f;
+        //hệ thống lấy CELL_SIZE = 24 từ Utils.h
 
         // Lấy kích thước gốc của bức ảnh
         FloatRect bounds = mSprite->getLocalBounds();
 
         // Tính toán tỷ lệ phóng to/thu nhỏ (Scale) để ảnh vừa khít ô lưới
-        float scaleX = (widthCells * CELL_SIZE) / bounds.width;
-        float scaleY = (heightCells * CELL_SIZE) / bounds.height;
+        float scaleX = (widthCells * (float)CELL_SIZE) / bounds.width;
+        float scaleY = (heightCells * (float)CELL_SIZE) / bounds.height;
 
         // Lật ảnh nếu nhân vật đi sang trái
         if (flipX) {

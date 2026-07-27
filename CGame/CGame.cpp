@@ -475,7 +475,7 @@ void CGAME::drawGame(RenderWindow& window, Font& font) {
 	if (!bgTried)
 	{
 		bgTried = true;
-		bgLoaded = bgTex.loadFromFile("Asset/background.png");
+		bgLoaded = bgTex.loadFromFile("Asset/background_base.png");
 		if (bgLoaded)
 		{
 			bgTex.setSmooth(true);
