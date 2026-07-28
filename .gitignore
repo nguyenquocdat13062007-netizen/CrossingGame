@@ -3,3 +3,6 @@
 [Db]bin/
 *.user
 *.suo
+/Main/CrossingGame.sln
+/Main/CrossingGame.vcxproj
+/Main/CrossingGame.vcxproj.filters
