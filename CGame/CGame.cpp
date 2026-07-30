@@ -182,7 +182,7 @@ void CGAME::loadAllAssets() {
 	{
 		if (axt[i] != nullptr)
 		{
-			axt[i]->loadAssets("Assets/truck1..png", "Assets/truck2.png");
+			axt[i]->loadAssets("Assets/truck1.png", "Assets/truck2.png");
 		}
 	}
 	for (int i = 0; i < mNumCars; i++)
@@ -484,33 +484,19 @@ void CGAME::drawGame(RenderWindow& window, Font& font) {
 
 	if (bgLoaded) {
 		Sprite tileSprite(tilesetTex);
-		// Tính tỷ lệ để ép viên gạch 48px chui vừa khít vào ô lưới của game
 		float scaleFactor = (float)CELL_SIZE / 48.0f;
 		tileSprite.setScale(scaleFactor, scaleFactor);
-
-		// Vòng lặp duyệt qua toàn bộ ma trận màn hình ngang dọc
 		for (int y = 0; y < SCREEN_HEIGHT; y++) {
 			for (int x = 0; x < SCREEN_WIDTH; x++) {
-
-				// ==========================================
-				// ĐÂY CHÍNH LÀ PHẦN "TOÁN HỌC" ĐỂ CHỌN GẠCH:
-				// So sánh tọa độ y hiện tại với ROAD_TOP và ROAD_BOTTOM
-				// ==========================================
 				if (y >= ROAD_TOP && y <= ROAD_BOTTOM) {
-					// Nằm trong vùng xe chạy -> Cắt lấy viên gạch bên PHẢI (Đường)
 					tileSprite.setTextureRect(IntRect(48, 0, 48, 48));
 				}
 				else {
-					// Nằm ngoài vùng xe chạy -> Cắt lấy viên gạch bên TRÁI (Vỉa hè)
 					tileSprite.setTextureRect(IntRect(0, 0, 48, 48));
 				}
-
-				// Tính tọa độ điểm vẽ trên màn hình
 				float px = (float)(x * CELL_SIZE);
 				float py = (float)(y * CELL_SIZE);
 				tileSprite.setPosition(px, py);
-
-				// In viên gạch ra
 				window.draw(tileSprite);
 			}
 		}
