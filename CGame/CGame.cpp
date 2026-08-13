@@ -35,6 +35,8 @@ CGAME::CGAME() : mLevel(1), mScore(0), mLives(3), mNumTrucks(0), mNumCars(0), mN
 		ac[i] = nullptr;
 	for (int i = 0; i < MAX_TRUCKS + MAX_CARS; i++)
 		mLights[i] = nullptr;
+
+	loadMapFromFile("Assets/map.txt");
 }
 
 CGAME::~CGAME() {
@@ -90,6 +92,8 @@ int CGAME::GetLaneY(int laneIndex) {
 // INIT LANES - Tao xe/thu/den theo mLevel
 // ================================================================
 void CGAME::InitLanes() {
+	loadMapFromFile("Assets/map_level" + std::to_string(mLevel) + ".txt");
+
 	for (int i = 0; i < MAX_TRUCKS; i++)
 	{
 		delete axt[i];
@@ -174,43 +178,94 @@ void CGAME::InitLanes() {
 }
 
 // ================================================================
+// LOAD MAP FROM FILE - Nap ma tran ban do tu file text
+// ================================================================
+void CGAME::loadMapFromFile(const string& filename) {
+	ifstream ifs(filename);
+	bool fileOk = false;
+	if (ifs.is_open()) {
+		fileOk = true;
+		for (int y = 0; y < SCREEN_HEIGHT; y++) {
+			for (int x = 0; x < SCREEN_WIDTH; x++) {
+				if (!(ifs >> mTileMap[y][x])) {
+					fileOk = false;
+					break;
+				}
+			}
+			if (!fileOk) break;
+		}
+		ifs.close();
+	}
+
+	if (!fileOk && filename != "Assets/map.txt") {
+		ifs.open("Assets/map.txt");
+		if (ifs.is_open()) {
+			fileOk = true;
+			for (int y = 0; y < SCREEN_HEIGHT; y++) {
+				for (int x = 0; x < SCREEN_WIDTH; x++) {
+					if (!(ifs >> mTileMap[y][x])) {
+						fileOk = false;
+						break;
+					}
+				}
+				if (!fileOk) break;
+			}
+			ifs.close();
+		}
+	}
+
+	if (!fileOk) {
+		// Fallback neu khong tim thay bat ky file map nao
+		for (int y = 0; y < SCREEN_HEIGHT; y++) {
+			for (int x = 0; x < SCREEN_WIDTH; x++) {
+				if (y >= ROAD_TOP && y <= ROAD_BOTTOM) {
+					mTileMap[y][x] = 1; // Duong
+				} else {
+					mTileMap[y][x] = 0; // Vi he / Co
+				}
+			}
+		}
+	}
+}
+
+// ================================================================
 // LOAD ALL ASSETS - Gan PNG cho tung doi tuong
 // ================================================================
 void CGAME::loadAllAssets() {
-	cn.loadAssets("Assets/player1.png", "Assets/player2.png");
+	cn.loadAssets("Assets/images/player/run-up-1.png", "Assets/images/player/run-up-2.png");
 	for (int i = 0; i < mNumTrucks; i++)
 	{
 		if (axt[i] != nullptr)
 		{
-			axt[i]->loadAssets("Assets/truck1.png", "Assets/truck2.png");
+			axt[i]->loadAssets("Assets/images/vehicle/truck.png", "Assets/images/vehicle/truck2.png");
 		}
 	}
 	for (int i = 0; i < mNumCars; i++)
 	{
 		if (axh[i] != nullptr)
 		{
-			axh[i]->loadAssets("Assets/car1.png", "Assets/car2.png");
+			axh[i]->loadAssets("Assets/images/vehicle/car.png", "Assets/images/vehicle/car2.png");
 		}
 	}
 	for (int i = 0; i < mNumDinos; i++)
 	{
 		if (akl[i] != nullptr)
 		{
-			akl[i]->loadAssets("Assets/Dinos.png", "Assets/Dinos.png");
+			akl[i]->loadAssets("Assets/images/other/rock1.png", "Assets/images/other/rock2.png");
 		}
 	}
 	for (int i = 0; i < mNumBirds; i++)
 	{
 		if (ac[i] != nullptr)
 		{
-			ac[i]->loadAssets("Assets/bird1.png", "Assets/bird2.png");
+			ac[i]->loadAssets("Assets/images/entities/bird1.png", "Assets/images/entities/bird2.png");
 		}
 	}
 	for (int i = 0; i < mNumTrucks + mNumCars; i++)
 	{
 		if (mLights[i] != nullptr)
 		{
-			mLights[i]->loadAssets("Assets/lightgo.png", "Assets/lightstop.png");
+			mLights[i]->loadAssets("Assets/images/environment(for-map)/lightstop.png", "Assets/images/environment(for-map)/light1.png");
 		}
 	}
 }
@@ -476,7 +531,7 @@ void CGAME::drawGame(RenderWindow& window, Font& font) {
 	// Nạp file 96x48
 	if (!bgTried) {
 		bgTried = true;
-		bgLoaded = tilesetTex.loadFromFile("Assets/background_base.png");
+		bgLoaded = tilesetTex.loadFromFile("Assets/images/environment(for-map)/background_base.png");
 		if (bgLoaded) {
 			tilesetTex.setSmooth(true);
 		}
@@ -488,12 +543,8 @@ void CGAME::drawGame(RenderWindow& window, Font& font) {
 		tileSprite.setScale(scaleFactor, scaleFactor);
 		for (int y = 0; y < SCREEN_HEIGHT; y++) {
 			for (int x = 0; x < SCREEN_WIDTH; x++) {
-				if (y >= ROAD_TOP && y <= ROAD_BOTTOM) {
-					tileSprite.setTextureRect(IntRect(48, 0, 48, 48));
-				}
-				else {
-					tileSprite.setTextureRect(IntRect(0, 0, 48, 48));
-				}
+				int tileID = mTileMap[y][x];
+				tileSprite.setTextureRect(IntRect(tileID * 48, 0, 48, 48));
 				float px = (float)(x * CELL_SIZE);
 				float py = (float)(y * CELL_SIZE);
 				tileSprite.setPosition(px, py);
