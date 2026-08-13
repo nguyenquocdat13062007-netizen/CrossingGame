@@ -79,9 +79,13 @@ private:
 
 	GameState mState; // Trang thai hien tai cua game (MENU, PLAYING, PAUSED, DEAD, GAMEOVER, WIN, LEVEL_UP)
 
+    // ---- Bản đồ (Tilemap) ----
+	int mTileMap[SCREEN_HEIGHT][SCREEN_WIDTH]; // Ma trận lưu vị trí tile background
+
     // ---- Ham noi bo ----
 	void InitLanes(); // Tao xe/thu/den theo mLevel
 	void loadAllAssets(); // Gan PNG cho tung doi tuong, goi sau khi new doi tuong trong InitLanes()
+	void loadMapFromFile(const std::string& filename = "Assets/map.txt"); // Nạp ma trận bản đồ từ file text
 	int  GetLaneY(int laneIndex); // Tra ve Y cua lan laneIndex (0-based, chi co xe/thu o lane 0-7, lane 8 la vạch FINISH, lane 9 la vạch START)
 
 	void drawBuildingsZone(RenderWindow& window); // Ve khu vuc nha cao tang o 2 ben duong, chi ve khi mLevel >= 3
