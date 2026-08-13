@@ -77,6 +77,17 @@ public:
         // Vi du: addFrame("bird1.png") + addFrame("bird2.png") = 2 frame vo canh
     }
 
+    bool loadAssets(const vector<string>& filenames) {
+        clear();
+        bool ok = true;
+        for (const auto& fn : filenames) {
+            if (!fn.empty()) {
+                if (!addFrame(fn)) ok = false;
+            }
+        }
+        return ok && !mFrames.empty();
+    }
+
     bool isLoaded() const {
 
 		return !mFrames.empty();
@@ -125,6 +136,7 @@ public:
 
         // Lấy kích thước gốc của bức ảnh
         FloatRect bounds = mSprite->getLocalBounds();
+        if (bounds.width == 0.f || bounds.height == 0.f) return;
 
         // Tính toán tỷ lệ phóng to/thu nhỏ (Scale) để ảnh vừa khít ô lưới
         float scaleX = (widthCells * (float)CELL_SIZE) / bounds.width;
