@@ -21,7 +21,10 @@ CPEOPLE::CPEOPLE(int startX, int startY)
 
 void CPEOPLE::loadAssets(const std::string& frame1,
     const std::string& frame2) {
-  
+    vector<string> files;
+    if (!frame1.empty()) files.push_back(frame1);
+    if (!frame2.empty()) files.push_back(frame2);
+    mAnim.loadAssets(files);
 }
 
 void CPEOPLE::Up(int step) {

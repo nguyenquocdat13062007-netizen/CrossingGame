@@ -84,7 +84,7 @@ public:
 
 // ================================================================
 // LOP CON: CBIRD - Chim (nho, nhanh)
-// Asset: bird_frame1_48x48.png, bird_frame2_48x48.png
+// Assets: Assets/images/entities/bird1.png, bird2.png
 // ================================================================
 class CBIRD : public CANIMAL {
 public:
@@ -102,7 +102,7 @@ public:
 // ================================================================
 // LOP CON: CROCK - Da lan (thay the CDINOSAUR)
 // To, cham, lan ngang qua duong
-// Asset: rock_frame1.png, rock_frame2.png
+// Assets: Assets/images/other/rock1.png, rock2.png
 // ================================================================
 class CROCK : public CANIMAL {
 public:

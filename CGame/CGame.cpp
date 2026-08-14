@@ -10,8 +10,38 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <string>
 using namespace std;
 using namespace sf;
+
+namespace {
+constexpr int TILE_SIZE = 48;
+constexpr int TILE_COUNT = 2;
+constexpr int TILE_BACKGROUND = 0;
+constexpr int TILE_ROAD = 1;
+constexpr const char* DEFAULT_MAP_PATH = "Assets/map.txt";
+
+bool readTileMap(const string& filename,
+                 int (&tiles)[SCREEN_HEIGHT][SCREEN_WIDTH]) {
+	ifstream input(filename);
+	if (!input.is_open()) {
+		return false;
+	}
+
+	for (int y = 0; y < SCREEN_HEIGHT; ++y) {
+		for (int x = 0; x < SCREEN_WIDTH; ++x) {
+			int tileId = 0;
+			if (!(input >> tileId) || tileId < 0 || tileId >= TILE_COUNT) {
+				return false;
+			}
+			tiles[y][x] = tileId;
+		}
+	}
+
+	string extraToken;
+	return !(input >> extraToken);
+}
+} // namespace
 // ================================================================
 // DINH NGHIA BIEN TOAN CUC (khai bao extern trong Utils.h)
 // Dung chung giua main() va SubThread()
@@ -181,49 +211,30 @@ void CGAME::InitLanes() {
 // LOAD MAP FROM FILE - Nap ma tran ban do tu file text
 // ================================================================
 void CGAME::loadMapFromFile(const string& filename) {
-	ifstream ifs(filename);
-	bool fileOk = false;
-	if (ifs.is_open()) {
-		fileOk = true;
-		for (int y = 0; y < SCREEN_HEIGHT; y++) {
-			for (int x = 0; x < SCREEN_WIDTH; x++) {
-				if (!(ifs >> mTileMap[y][x])) {
-					fileOk = false;
-					break;
-				}
-			}
-			if (!fileOk) break;
-		}
-		ifs.close();
+	int loadedMap[SCREEN_HEIGHT][SCREEN_WIDTH]{};
+	bool loaded = readTileMap(filename, loadedMap);
+
+	if (!loaded && filename != DEFAULT_MAP_PATH) {
+		cerr << "Invalid map '" << filename
+		     << "'; falling back to " << DEFAULT_MAP_PATH << ".\n";
+		loaded = readTileMap(DEFAULT_MAP_PATH, loadedMap);
 	}
 
-	if (!fileOk && filename != "Assets/map.txt") {
-		ifs.open("Assets/map.txt");
-		if (ifs.is_open()) {
-			fileOk = true;
-			for (int y = 0; y < SCREEN_HEIGHT; y++) {
-				for (int x = 0; x < SCREEN_WIDTH; x++) {
-					if (!(ifs >> mTileMap[y][x])) {
-						fileOk = false;
-						break;
-					}
-				}
-				if (!fileOk) break;
+	if (!loaded) {
+		cerr << "Could not load a valid tile map; using the built-in map.\n";
+		for (int y = 0; y < SCREEN_HEIGHT; ++y) {
+			for (int x = 0; x < SCREEN_WIDTH; ++x) {
+				loadedMap[y][x] =
+					(y >= ROAD_TOP && y <= ROAD_BOTTOM)
+						? TILE_ROAD
+						: TILE_BACKGROUND;
 			}
-			ifs.close();
 		}
 	}
 
-	if (!fileOk) {
-		// Fallback neu khong tim thay bat ky file map nao
-		for (int y = 0; y < SCREEN_HEIGHT; y++) {
-			for (int x = 0; x < SCREEN_WIDTH; x++) {
-				if (y >= ROAD_TOP && y <= ROAD_BOTTOM) {
-					mTileMap[y][x] = 1; // Duong
-				} else {
-					mTileMap[y][x] = 0; // Vi he / Co
-				}
-			}
+	for (int y = 0; y < SCREEN_HEIGHT; ++y) {
+		for (int x = 0; x < SCREEN_WIDTH; ++x) {
+			mTileMap[y][x] = loadedMap[y][x];
 		}
 	}
 }
@@ -528,26 +539,38 @@ void CGAME::drawGame(RenderWindow& window, Font& font) {
 	static Texture tilesetTex;
 	static bool bgLoaded = false, bgTried = false;
 
-	// Nạp file 96x48
+	// The 96x48 image contains two 48x48 tiles: background then road.
 	if (!bgTried) {
 		bgTried = true;
 		bgLoaded = tilesetTex.loadFromFile("Assets/images/environment(for-map)/background_base.png");
 		if (bgLoaded) {
-			tilesetTex.setSmooth(true);
+			const Vector2u textureSize = tilesetTex.getSize();
+			bgLoaded = textureSize.x == TILE_SIZE * TILE_COUNT &&
+			           textureSize.y == TILE_SIZE;
+			if (bgLoaded) {
+				tilesetTex.setSmooth(true);
+			} else {
+				cerr << "Invalid background tileset size; expected 96x48.\n";
+			}
 		}
 	}
 
 	if (bgLoaded) {
 		Sprite tileSprite(tilesetTex);
-		float scaleFactor = (float)CELL_SIZE / 48.0f;
-		tileSprite.setScale(scaleFactor, scaleFactor);
-		for (int y = 0; y < SCREEN_HEIGHT; y++) {
-			for (int x = 0; x < SCREEN_WIDTH; x++) {
-				int tileID = mTileMap[y][x];
-				tileSprite.setTextureRect(IntRect(tileID * 48, 0, 48, 48));
-				float px = (float)(x * CELL_SIZE);
-				float py = (float)(y * CELL_SIZE);
-				tileSprite.setPosition(px, py);
+		const float scaleFactor = static_cast<float>(CELL_SIZE) / TILE_SIZE;
+		tileSprite.setScale(Vector2f(scaleFactor, scaleFactor));
+		for (int y = 0; y < SCREEN_HEIGHT; ++y) {
+			for (int x = 0; x < SCREEN_WIDTH; ++x) {
+				const int tileId = mTileMap[y][x];
+				if (tileId < 0 || tileId >= TILE_COUNT) {
+					continue;
+				}
+				tileSprite.setTextureRect(
+					IntRect(Vector2i(tileId * TILE_SIZE, 0),
+					        Vector2i(TILE_SIZE, TILE_SIZE)));
+				tileSprite.setPosition(Vector2f(
+					static_cast<float>(x * CELL_SIZE),
+					static_cast<float>(y * CELL_SIZE)));
 				window.draw(tileSprite);
 			}
 		}

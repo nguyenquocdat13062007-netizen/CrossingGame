@@ -55,7 +55,7 @@ public:
 
 // ================================================================
 // CCAR - Xe hoi (nho, nhanh)
-// Asset: car_frame1_72x48.png, car_frame2_72x48.png
+// Assets: Assets/images/vehicle/car.png, car2.png
 // ================================================================
 class CCAR : public CVEHICLE {
 public:
@@ -65,7 +65,7 @@ public:
 
 // ================================================================
 // CTRUCK - Xe tai (to, cham)
-// Asset: truck_frame1.png, truck_frame2.png
+// Assets: Assets/images/vehicle/truck.png, truck2.png
 // ================================================================
 class CTRUCK : public CVEHICLE {
 public:

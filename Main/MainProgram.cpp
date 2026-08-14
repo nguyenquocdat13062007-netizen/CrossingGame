@@ -71,8 +71,12 @@ int main() {
     window.setFramerateLimit(60);
 
     Font font;
-    if (!font.openFromFile("Assets/arial.ttf")) {
-        if (!font.openFromFile("arial.ttf")) return -1;
+    bool fontLoaded = font.openFromFile("/System/Library/Fonts/Supplemental/Arial.ttf") ||
+                       font.openFromFile("/Library/Fonts/Arial.ttf") ||
+                       font.openFromFile("C:/Windows/Fonts/arial.ttf");
+    if (!fontLoaded) {
+        // Tiep tuc ma khong return -1 neu khong tim thay font de tranh crash ngay lap tuc
+        std::cout << "Warning: Could not load font file." << std::endl;
     }
 
     g_window = &window;
