@@ -5,6 +5,7 @@
 
 #include "CGame.h"
 #include <SFML/Graphics.hpp>
+#include <iostream>
 #include <thread>
 
 CGAME cg;

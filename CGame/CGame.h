@@ -16,6 +16,7 @@
 #include "CVehicle.h"
 #include "CAnimal.h"
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio/Music.hpp>
 #include <fstream>
 #include <string>
 using namespace std;
@@ -79,6 +80,20 @@ private:
 
 	GameState mState; // Trang thai hien tai cua game (MENU, PLAYING, PAUSED, DEAD, GAMEOVER, WIN, LEVEL_UP)
 
+	// ---- Chu ky den giao thong dung chung ----
+	CTRAFFICLIGHT::State mTrafficState;
+	Clock mTrafficClock;
+	int mGreenDurationMs;
+	int mRedDurationMs;
+
+	// ---- Am thanh den giao thong ----
+	Music mTrafficStart;
+	Music mTrafficStopping;
+	bool mTrafficStartLoaded;
+	bool mTrafficStoppingLoaded;
+	void updateTrafficAudio();
+	void stopTrafficAudio();
+
     // ---- Bản đồ (Tilemap) ----
 	int mTileMap[SCREEN_HEIGHT][SCREEN_WIDTH]; // Ma trận lưu vị trí tile background
 
@@ -140,7 +155,7 @@ public:
 	int       getScore() const { return mScore; } // Tra ve diem hien tai
 	int       getLives() const { return mLives; } // Tra ve so mang hien tai
 	GameState getState() const { return mState; } // Tra ve trang thai hien tai cua game
-	void      setState(GameState s) { mState = s; } // Dat trang thai hien tai cua game, dung de chuyen giua cac menu va gameplay
+	void      setState(GameState s); // Dat trang thai va dong bo am thanh gameplay
 
     // ---- Them cho main.cpp goi Init() truoc startGame() ----
 	void Init(); // Khoi tao CGAME, load anh, khoi tao lane, goi sau khi new CGAME trong main.cpp, truoc khi startGame() de chuan bi du lieu cho tro choi

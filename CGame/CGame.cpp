@@ -52,8 +52,14 @@ volatile char MOVING = ' ';
 // ================================================================
 // CONSTRUCTOR & DESTRUCTOR
 // ================================================================
-CGAME::CGAME() : mLevel(1), mScore(0), mLives(3), mNumTrucks(0), mNumCars(0), mNumDinos(0), mNumBirds(0), mState(GameState::MENU)
-// khoi tao constructor co dinh voi level 1 0 diem 3 mang 0 xe 0 animal va xuat hien o giao dien menu dau tien 
+CGAME::CGAME()
+    : mLevel(1), mScore(0), mLives(3),
+      mNumTrucks(0), mNumCars(0), mNumDinos(0), mNumBirds(0),
+      mState(GameState::MENU),
+      mTrafficState(CTRAFFICLIGHT::GREEN),
+      mGreenDurationMs(3000), mRedDurationMs(2000),
+      mTrafficStartLoaded(false), mTrafficStoppingLoaded(false)
+// khoi tao constructor co dinh voi level 1 0 diem 3 mang 0 xe 0 animal va xuat hien o giao dien menu dau tien
 {
 	for (int i = 0; i < MAX_TRUCKS; i++)
 		axt[i] = nullptr;
@@ -67,6 +73,21 @@ CGAME::CGAME() : mLevel(1), mScore(0), mLives(3), mNumTrucks(0), mNumCars(0), mN
 		mLights[i] = nullptr;
 
 	loadMapFromFile("Assets/map.txt");
+
+	mTrafficStartLoaded = mTrafficStart.openFromFile(
+		"Assets/music/Traffic-Start.wav");
+	mTrafficStoppingLoaded = mTrafficStopping.openFromFile(
+		"Assets/music/Traffic-Stopping.wav");
+	if (mTrafficStartLoaded) {
+		mTrafficStart.setLooping(true);
+	} else {
+		cerr << "Could not load Assets/music/Traffic-Start.wav.\n";
+	}
+	if (mTrafficStoppingLoaded) {
+		mTrafficStopping.setLooping(true);
+	} else {
+		cerr << "Could not load Assets/music/Traffic-Stopping.wav.\n";
+	}
 }
 
 CGAME::~CGAME() {
@@ -177,7 +198,7 @@ void CGAME::InitLanes() {
 		int dir = (i % 2 == 0) ? 1 : -1;
 		int x = (dir == 1) ? 0 : SCREEN_WIDTH - 3;
 		axt[i] = new CTRUCK(x, y, BaseSpeed, dir);
-		mLights[i] = new CTRAFFICLIGHT(y, 3000 - mLevel * 200, 2000);
+		mLights[i] = new CTRAFFICLIGHT(y);
 	}
 
 	for (int i = 0; i < mNumCars; i++)
@@ -186,7 +207,7 @@ void CGAME::InitLanes() {
 		int dir = (i % 2 == 0) ? 1 : -1;
 		int x = (dir == 1) ? 0 : SCREEN_WIDTH - 2;
 		axh[i] = new CCAR(x, y, BaseSpeed + 1, dir);
-		mLights[mNumTrucks + i] = new CTRAFFICLIGHT(y, 2500 - mLevel * 150, 1500);
+		mLights[mNumTrucks + i] = new CTRAFFICLIGHT(y);
 	}
 
 	for (int i = 0; i < mNumDinos; i++)
@@ -204,7 +225,13 @@ void CGAME::InitLanes() {
 		int x = (dir == 1) ? 0 : SCREEN_WIDTH - 2;
 		ac[i] = new CBIRD(x, y, BaseSpeed, dir);
 	}
+
+	mTrafficState = CTRAFFICLIGHT::GREEN;
+	mGreenDurationMs = max(1000, 3000 - mLevel * 200);
+	mRedDurationMs = 2000;
+	mTrafficClock.restart();
 	loadAllAssets();
+	updateTrafficAudio();
 }
 
 // ================================================================
@@ -272,11 +299,23 @@ void CGAME::loadAllAssets() {
 			ac[i]->loadAssets("Assets/images/entities/bird1.png", "Assets/images/entities/bird2.png");
 		}
 	}
+	const vector<string> trafficGreenFrames = {
+		"Assets/images/environment(for-map)/light1.png",
+		"Assets/images/environment(for-map)/light2.png",
+		"Assets/images/environment(for-map)/light3.png",
+		"Assets/images/environment(for-map)/light4.png"
+	};
 	for (int i = 0; i < mNumTrucks + mNumCars; i++)
 	{
 		if (mLights[i] != nullptr)
 		{
-			mLights[i]->loadAssets("Assets/images/environment(for-map)/lightstop.png", "Assets/images/environment(for-map)/light1.png");
+			if (!mLights[i]->loadAssets(
+				"Assets/images/environment(for-map)/lightstop.png",
+				trafficGreenFrames)) {
+				cerr << "Could not load traffic-light assets for lane "
+				     << mLights[i]->getLaneY() << ".\n";
+			}
+			mLights[i]->setState(mTrafficState);
 		}
 	}
 }
@@ -318,6 +357,13 @@ void CGAME::updateAnimations(float dt) {
 		}
 	}
 
+	for (int i = 0; i < mNumTrucks + mNumCars; i++)
+	{
+		if (mLights[i] != nullptr)
+		{
+			mLights[i]->updateAnimation(dt);
+		}
+	}
 }
 
 // ================================================================
@@ -334,20 +380,21 @@ void CGAME::startGame() {
 	mLevel = 1; mScore = 0; mLives = 3;
 	cn.Reset();
 	InitLanes();
-	mState = GameState::PLAYING;
+	setState(GameState::PLAYING);
 }
 
 void CGAME::resetGame() {
 	mLevel = 1; mScore = 0; mLives = 3;
 	cn.Reset();
 	InitLanes();
+	setState(GameState::MENU);
 }
 
 void CGAME::nextLevel() {
 	mLevel++;
 	cn.Reset();
 	InitLanes();
-	mState = GameState::PLAYING;
+	setState(GameState::PLAYING);
 }
 
 // ================================================================
@@ -356,20 +403,20 @@ void CGAME::nextLevel() {
 // ================================================================
 void CGAME::pauseGame(HANDLE hThread) {
 	SuspendThread(hThread);
-	mState = GameState::PAUSED;
-
+	setState(GameState::PAUSED);
 }
 
 void CGAME::resumeGame(HANDLE hThread) {
 	if (mState == GameState::PAUSED)
 	{
-		mState = GameState::PLAYING;
+		setState(GameState::PLAYING);
 		ResumeThread(hThread);
 	}
 }
 
 void CGAME::exitGame(HANDLE hThread) {
 	IS_RUNNING = false;
+	stopTrafficAudio();
 	SuspendThread(hThread);
 }
 
@@ -395,7 +442,6 @@ void CGAME::updatePosVehicle() {
 		if (axt[i] != nullptr)
 		{
 			axt[i]->Move(SCREEN_WIDTH);
-			axt[i]->Tell();
 		}
 	}
 	for (int i = 0; i < mNumCars; i++)
@@ -403,7 +449,6 @@ void CGAME::updatePosVehicle() {
 		if (axh[i] != nullptr)
 		{
 			axh[i]->Move(SCREEN_WIDTH);
-			axh[i]->Tell();
 		}
 	}
 }
@@ -428,52 +473,72 @@ void CGAME::updatePosAnimal() {
 }
 
 void CGAME::updateTrafficLights() {
-	for (int i = 0; i < mNumTrucks + mNumCars; i++)
-	{
-		if (mLights[i] == nullptr)
-		{
-			continue;
-		}
-		bool wasRed = mLights[i]->isRed();
-		mLights[i]->Update();
-		bool isNowRed = mLights[i]->isRed();
-		int laneY = (i < mNumTrucks) ? (axt[i] != nullptr ? axt[i]->getY() : -1) : (axh[i - mNumTrucks] ? axh[i - mNumTrucks]->getY() : -1);
+	const int durationMs = mTrafficState == CTRAFFICLIGHT::GREEN
+		? mGreenDurationMs
+		: mRedDurationMs;
+	if (mTrafficClock.getElapsedTime().asMilliseconds() < durationMs) {
+		return;
+	}
 
-		if (!wasRed && isNowRed)
-		{
-			for (int j = 0; j < mNumTrucks; j++)
-			{
-				if (axt[j] != nullptr && axt[j]->getY() == laneY)
-				{
-					axt[j]->Stop(99999);
-				}
-			}
-			for (int j = 0; j < mNumCars; j++)
-			{
-				if (axh[j] != nullptr && axh[j]->getY() == laneY)
-				{
-					axh[j]->Stop(99999);
-				}
-			}
-		}
-		else if (wasRed && !isNowRed)
-		{
-			for (int j = 0; j < mNumTrucks; j++)
-			{
-				if (axt[j] != nullptr && axt[j]->getY() == laneY)
-				{
-					axt[j]->Resume();
-				}
-			}
-			for (int j = 0; j < mNumCars; j++)
-			{
-				if (axh[j] != nullptr && axh[j]->getY() == laneY)
-				{
-					axh[j]->Resume();
-				}
-			}
+	mTrafficState = mTrafficState == CTRAFFICLIGHT::GREEN
+		? CTRAFFICLIGHT::RED
+		: CTRAFFICLIGHT::GREEN;
+	mTrafficClock.restart();
+
+	for (int i = 0; i < mNumTrucks + mNumCars; i++) {
+		if (mLights[i] != nullptr) {
+			mLights[i]->setState(mTrafficState);
 		}
 	}
+
+	const bool stopVehicles = mTrafficState == CTRAFFICLIGHT::RED;
+	for (int i = 0; i < mNumTrucks; i++) {
+		if (axt[i] == nullptr) continue;
+		if (stopVehicles) axt[i]->Stop(99999);
+		else axt[i]->Resume();
+	}
+	for (int i = 0; i < mNumCars; i++) {
+		if (axh[i] == nullptr) continue;
+		if (stopVehicles) axh[i]->Stop(99999);
+		else axh[i]->Resume();
+	}
+	updateTrafficAudio();
+}
+
+void CGAME::stopTrafficAudio() {
+	if (mTrafficStartLoaded) mTrafficStart.stop();
+	if (mTrafficStoppingLoaded) mTrafficStopping.stop();
+}
+
+void CGAME::updateTrafficAudio() {
+	if (mState != GameState::PLAYING) {
+		stopTrafficAudio();
+		return;
+	}
+
+	Music* active = mTrafficState == CTRAFFICLIGHT::GREEN
+		? &mTrafficStart
+		: &mTrafficStopping;
+	Music* inactive = mTrafficState == CTRAFFICLIGHT::GREEN
+		? &mTrafficStopping
+		: &mTrafficStart;
+	const bool activeLoaded = mTrafficState == CTRAFFICLIGHT::GREEN
+		? mTrafficStartLoaded
+		: mTrafficStoppingLoaded;
+
+	if (mTrafficStartLoaded && inactive == &mTrafficStart) mTrafficStart.stop();
+	if (mTrafficStoppingLoaded && inactive == &mTrafficStopping) mTrafficStopping.stop();
+	if (activeLoaded && active->getStatus() != SoundSource::Status::Playing) {
+		active->play();
+	}
+}
+
+void CGAME::setState(GameState state) {
+	if (mState == state) {
+		return;
+	}
+	mState = state;
+	updateTrafficAudio();
 }
 
 // ================================================================
@@ -582,18 +647,38 @@ void CGAME::drawGame(RenderWindow& window, Font& font) {
 	road.setPosition(Vector2f(0.f, CellToPixel(ROAD_TOP)));*/
 	//road.setFillColor(bgLoaded ? Color )
 
-	// ---------- 3) ve lane đại diện cho FINISH va START ----------
+	// ---------- 3) Ve cac doi tuong dang chay ----------
+	for (int i = 0; i < mNumTrucks; ++i) {
+		if (axt[i] != nullptr) {
+			axt[i]->Draw(window);
+		}
+	}
+	for (int i = 0; i < mNumCars; ++i) {
+		if (axh[i] != nullptr) {
+			axh[i]->Draw(window);
+		}
+	}
+	for (int i = 0; i < mNumDinos; ++i) {
+		if (akl[i] != nullptr) {
+			akl[i]->Draw(window);
+		}
+	}
+	for (int i = 0; i < mNumBirds; ++i) {
+		if (ac[i] != nullptr) {
+			ac[i]->Draw(window);
+		}
+	}
 
+	// ---------- 4) Den giao thong ----------
+	for (int i = 0; i < mNumTrucks + mNumCars; ++i) {
+		if (mLights[i] != nullptr) {
+			mLights[i]->Draw(window, SCREEN_WIDTH - 1,
+				mLights[i]->getLaneY() - 1);
+		}
+	}
 
-	// ---------- 4) Ve xe, da lan, chim ----------
-
-
-	// ---------- 5) Den giao thong ----------
-
-	// ---------- 6) Nguoi choi ----------
-
-
-	// ---------- 7) HUD ----------
+	// ---------- 5) Nguoi choi ----------
+	cn.Draw(window, font);
 
 }
 
@@ -711,10 +796,10 @@ static void DrawOverlayBox(RenderWindow& window, float w, float h, Color borderC
 	Vector2u winSize = window.getSize();
 
 	// Dời điểm neo của hình chữ nhật vào chính giữa nó
-	box.setOrigin(w / 2.0f, h / 2.0f);
+	box.setOrigin(Vector2f(w / 2.0f, h / 2.0f));
 
 	// Đặt hình chữ nhật vào chính giữa màn hình
-	box.setPosition(winSize.x / 2.0f, winSize.y / 2.0f);
+	box.setPosition(Vector2f(winSize.x / 2.0f, winSize.y / 2.0f));
 
 	// Đổ màu và viền
 	box.setFillColor(Color(0, 0, 0, 200));
@@ -730,10 +815,12 @@ static void CenterTextAt(Text& text, float targetX, float targetY) {
 	FloatRect bounds = text.getLocalBounds();
 
 	// Dời tâm text vào chính giữa
-	text.setOrigin(bounds.left + bounds.width / 2.0f, bounds.top + bounds.height / 2.0f);
+	text.setOrigin(Vector2f(
+		bounds.position.x + bounds.size.x / 2.0f,
+		bounds.position.y + bounds.size.y / 2.0f));
 
 	// Đặt text vào tọa độ mong muốn
-	text.setPosition(targetX, targetY);
+	text.setPosition(Vector2f(targetX, targetY));
 }
 
 void CGAME::renderMenu(RenderWindow& window, Font& font) {
@@ -746,24 +833,24 @@ void CGAME::renderMenu(RenderWindow& window, Font& font) {
 	DrawOverlayBox(window, 400.f, 300.f, Color::Green);
 
 	// Tiêu đề
-	Text title("CROSSING GAME", font, 40);
+	Text title(font, "CROSSING GAME", 40);
 	title.setFillColor(Color::Yellow);
 	CenterTextAt(title, centerX, centerY - 100.f); // Đặt cao hơn tâm màn hình 100px
 
 	// menu options
-	Text opt1("1. New Game", font, 25);
+	Text opt1(font, "1. New Game", 25);
 	opt1.setFillColor(Color::White);
 	CenterTextAt(opt1, centerX, centerY - 20.f);
 
-	Text opt2("2. Load Game", font, 25);
+	Text opt2(font, "2. Load Game", 25);
 	opt2.setFillColor(Color::White);
 	CenterTextAt(opt2, centerX, centerY + 30.f);
 
-	Text opt3("3. Settings", font, 25.f);
+	Text opt3(font, "3. Settings", 25);
 	opt3.setFillColor(Color::White);
 	CenterTextAt(opt3, centerX, centerY + 60.f);
 
-	Text opt4("4. Exit", font, 25);
+	Text opt4(font, "4. Exit", 25);
 	opt4.setFillColor(Color::White);
 	CenterTextAt(opt3, centerX, centerY + 80.f);
 
@@ -783,11 +870,11 @@ void CGAME::renderPauseMsg(RenderWindow& window, Font& font) {
 
 	DrawOverlayBox(window, 350.f, 200.f, Color::Blue);
 
-	Text title("PAUSED", font, 45);
+	Text title(font, "PAUSED", 45);
 	title.setFillColor(Color::Blue);
 	CenterTextAt(title, centerX, centerY - 30.f);
 
-	Text prompt("Press P to resume", font, 25);
+	Text prompt(font, "Press P to resume", 25);
 	prompt.setFillColor(Color::Blue);
 	CenterTextAt(prompt, centerX, centerY + 40.f);
 
@@ -803,15 +890,15 @@ void CGAME::renderDeadMsg(RenderWindow& window, Font& font) {
 
 	DrawOverlayBox(window, 400.f, 300.f, Color::Red);
 
-	Text title("YOU DIED", font, 45);
+	Text title(font, "YOU DIED", 45);
 	title.setFillColor(Color::Red);
 	CenterTextAt(title, centerX, centerY - 30.f);
 
-	Text promtLive("Remaining lives " + to_string(mLives), font, 25);
+	Text promtLive(font, "Remaining lives " + to_string(mLives), 25);
 	promtLive.setFillColor(Color::White);
 	CenterTextAt(promtLive, centerX, centerY + 25.f);
 
-	Text prompt("Press Y to continue", font, 25);
+	Text prompt(font, "Press Y to continue", 25);
 	prompt.setFillColor(Color::White);
 	CenterTextAt(prompt, centerX, centerY + 40.f);
 
@@ -829,7 +916,7 @@ void CGAME::renderLevelUp(RenderWindow& window, Font& font) {
 
 	DrawOverlayBox(window, 400.f, 250.f, Color::Magenta);
 
-	Text title("LEVELED UP! -> Level " + to_string(mLevel), font, 45);
+	Text title(font, "LEVELED UP! -> Level " + to_string(mLevel), 45);
 	title.setFillColor(Color::Magenta);
 	CenterTextAt(title, centerX, centerY - 30.f);
 
@@ -843,15 +930,15 @@ void CGAME::renderWin(RenderWindow& window, Font& font) {
 
 	DrawOverlayBox(window, 500.f, 250.f, Color::Yellow);
 
-	Text title("VICTORY!", font, 55);
+	Text title(font, "VICTORY!", 55);
 	title.setFillColor(Color::Yellow);
 	CenterTextAt(title, centerX, centerY - 40.f);
 
-	Text prompt("Fianal scores " + to_string(mScore), font, 25);
+	Text prompt(font, "Fianal scores " + to_string(mScore), 25);
 	prompt.setFillColor(Color::White);
 	CenterTextAt(prompt, centerX, centerY + 20.f);
 
-	Text exitPrompt("Press any keys to Exit", font, 20);
+	Text exitPrompt(font, "Press any keys to Exit", 20);
 	exitPrompt.setFillColor(Color::Cyan);
 	CenterTextAt(exitPrompt, centerX, centerY + 70.f);
 
@@ -867,16 +954,16 @@ void CGAME::renderGameOver(RenderWindow& window, Font& font) {
 
 	DrawOverlayBox(window, 450.f, 250.f, Color::Red);
 
-	Text title("GAME OVER", font, 55);
+	Text title(font, "GAME OVER", 55);
 	title.setFillColor(Color::Red);
 	title.setStyle(Text::Bold);
 	CenterTextAt(title, centerX, centerY - 40.f);
 
-	Text prompt("Finals scores " + to_string(mScore), font, 25);
+	Text prompt(font, "Finals scores " + to_string(mScore), 25);
 	prompt.setFillColor(Color::White);
 	CenterTextAt(prompt, centerX, centerY + 20.f);
 
-	Text exitPrompt("Press anny keys to Exit", font, 20);
+	Text exitPrompt(font, "Press anny keys to Exit", 20);
 	exitPrompt.setFillColor(Color(200, 200, 200));
 	CenterTextAt(exitPrompt, centerX, centerY + 70.f);
 

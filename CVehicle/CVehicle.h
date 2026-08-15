@@ -7,6 +7,7 @@
 #include <SFML/Graphics.hpp>
 #include <optional>
 #include <string>
+#include <vector>
 using namespace std;
 using namespace sf;
 
@@ -47,6 +48,7 @@ public:
    
 	virtual void Move(int screenWidthCells); // Di chuyển xe theo mSpeed và mDirection, cập nhật mX, và xử lý khi xe
 	virtual void Draw(RenderWindow& window); // Vẽ xe tại vị trí (mX, mY) trên window, sử dụng mAnim để vẽ animation
+	bool isImpact(int px, int py) const;
 
 	void Stop(int duration_ms); // Dừng xe trong duration_ms milliseconds, cập nhật mStopped, mStopDurationMs, và start mStopClock
 	void Resume(); // Cho xe tiếp tục di chuyển nếu đang dừng, cập nhật mStopped và reset mStopDurationMs
@@ -83,29 +85,29 @@ public:
 	enum State { RED, GREEN }; // Trạng thái đèn giao thông: RED = dừng, GREEN = đi
 
 private:
-	State  mState; // Trạng thái hiện tại của đèn giao thông
-	Clock  mClock; //   Đồng hồ để đếm thời gian chuyển đổi giữa RED và GREEN
-	int    mGreenDurationMs; // Thời gian (ms) đèn xanh được bật trước khi chuyển sang đỏ
-	int    mRedDurationMs; // Thời gian (ms) đèn đỏ được bật trước khi chuyển sang xanh
-
-	Texture  mTexStop;  // Ảnh đèn đỏ (stop)
-	Texture mTexGo;     // Ảnh đèn xanh (go)
-	optional<Sprite> mSprite; // Sprite để vẽ đèn giao thông, giữ reference đến mTexStop hoặc mTexGo tùy trạng thái 
-	bool  mAssetsLoaded; // true nếu đã load ảnh thành công, false nếu chưa hoặc load thất bại
+	State mState; // Trạng thái hiện tại của đèn giao thông
+	int mLaneY; // Hàng của làn đường mà đèn điều khiển
+	AnimatedSprite mGreenAnim; // light1 -> light4 khi giao thông đang chạy
+	Texture mTexStop; // Ảnh dừng giao thông
+	optional<Sprite> mStopSprite;
+	bool mStopAssetLoaded;
 
 public:
-	CTRAFFICLIGHT(int laneY, int greenMs = 3000, int redMs = 2000); // Constructor khởi tạo đèn giao thông tại hàng laneY, với thời gian xanh và đỏ mặc định
+	explicit CTRAFFICLIGHT(int laneY);
 
-    // Load 2 anh: stop (den do) va go (den xanh)
-	void loadAssets(const std::string& stopImg, const std::string& goImg); // Gọi sau khi new, nếu load thất bại thì mAssetsLoaded = false
+	// Load ảnh dừng và các frame animation cho trạng thái chạy
+	bool loadAssets(const std::string& stopImg,
+		const std::vector<std::string>& goFrames);
 
-	void Update(); // Cập nhật trạng thái đèn giao thông dựa trên thời gian đã trôi qua, gọi mỗi frame từ CGAME.updateTrafficLights()
+	void setState(State state);
+	void updateAnimation(float dt);
 
-	State getState() const { return mState; } // Trả về trạng thái hiện tại của đèn giao thông
-	bool  isRed()    const { return mState == RED; } // Trả về true nếu đèn đang đỏ
+	State getState() const { return mState; }
+	bool isRed() const { return mState == RED; }
+	int getLaneY() const { return mLaneY; }
 
-    // Ve nguoi cam gay tai vi tri (x,y) o luoi
-	void Draw(RenderWindow& window, int x, int y); // Gọi mỗi frame từ CGAME.drawGame() để vẽ đèn giao thông tại vị trí (x, y) trên đường, sử dụng mSprite để vẽ ảnh tương ứng với trạng thái hiện tại
+	// Vẽ đèn tại vị trí x, y tính theo ô lưới
+	void Draw(RenderWindow& window, int x, int y);
 };
 
 #endif

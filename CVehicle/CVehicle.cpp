@@ -124,47 +124,42 @@ CTRUCK::CTRUCK(int x, int y, int speed, int dir)
 // ================================================================
 // CTRAFFICLIGHT
 // ================================================================
-CTRAFFICLIGHT::CTRAFFICLIGHT(int laneY, int greenMs, int redMs)
+CTRAFFICLIGHT::CTRAFFICLIGHT(int laneY)
     : mState(GREEN),
-    mGreenDurationMs(greenMs),
-    mRedDurationMs(redMs),
-    mAssetsLoaded(false) {
-    mClock.restart();
+      mLaneY(laneY),
+      mGreenAnim(0.12f),
+      mStopAssetLoaded(false) {
 }
 
 // ----------------------------------------------------------------
-// loadAssets — Load ảnh đèn đỏ và đèn xanh
+// loadAssets — Load ảnh đèn dừng và animation đèn chạy
 // ----------------------------------------------------------------
-void CTRAFFICLIGHT::loadAssets(const std::string& stopImg, const std::string& goImg) {
-    bool ok1 = mTexStop.loadFromFile(stopImg);
-    bool ok2 = mTexGo.loadFromFile(goImg);
+bool CTRAFFICLIGHT::loadAssets(const std::string& stopImg,
+                               const std::vector<std::string>& goFrames) {
+    const bool stopLoaded = mTexStop.loadFromFile(stopImg);
+    const bool greenLoaded = mGreenAnim.loadAssets(goFrames);
 
-    if (ok1 && ok2) {
-        mAssetsLoaded = true;
-        mSprite.emplace(mTexGo); // Bắt đầu bằng đèn xanh
+    mStopAssetLoaded = stopLoaded;
+    if (stopLoaded) {
+        mStopSprite.emplace(mTexStop);
     }
-    else {
-        mAssetsLoaded = false;
+    return stopLoaded && greenLoaded;
+}
+
+void CTRAFFICLIGHT::setState(State state) {
+    if (mState == state) {
+        return;
+    }
+
+    mState = state;
+    if (mState == GREEN) {
+        mGreenAnim.reset();
     }
 }
 
-// ----------------------------------------------------------------
-// Update — Đổi trạng thái đèn theo thời gian
-// Khi chuyển RED  → CGAME gọi Stop()   cho xe ở làn này
-// Khi chuyển GREEN → CGAME gọi Resume() cho xe ở làn này
-// ----------------------------------------------------------------
-void CTRAFFICLIGHT::Update() {
-    int elapsed = (int)mClock.getElapsedTime().asMilliseconds();
-
-    if (mState == GREEN && elapsed >= mGreenDurationMs) {
-        mState = RED;
-        mClock.restart();
-        if (mAssetsLoaded) mSprite.emplace(mTexStop);
-    }
-    else if (mState == RED && elapsed >= mRedDurationMs) {
-        mState = GREEN;
-        mClock.restart();
-        if (mAssetsLoaded) mSprite.emplace(mTexGo);
+void CTRAFFICLIGHT::updateAnimation(float dt) {
+    if (mState == GREEN) {
+        mGreenAnim.update(dt);
     }
 }
 
@@ -173,18 +168,31 @@ void CTRAFFICLIGHT::Update() {
 // Có ảnh → vẽ sprite | Không có ảnh → vẽ hình tròn màu fallback
 // ----------------------------------------------------------------
 void CTRAFFICLIGHT::Draw(RenderWindow& window, int x, int y) {
-    float px = CellToPixel(x);
-    float py = CellToPixel(y);
+    const float px = CellToPixel(x);
+    const float py = CellToPixel(y);
+    const int heightCells = 2;
 
-    if (mAssetsLoaded && mSprite.has_value()) {
-        mSprite->setPosition(Vector2f(px, py));
-        window.draw(*mSprite);
+    if (mState == GREEN && mGreenAnim.isLoaded()) {
+        mGreenAnim.draw(window, px, py, 1, heightCells);
+        return;
     }
-    else {
-        // Fallback: hình tròn đỏ/xanh
-        CircleShape dot(CELL_SIZE / 2.0f - 2.0f);
-        dot.setPosition(Vector2f(px + 2.0f, py + 2.0f));
-        dot.setFillColor(mState == RED ? COLOR_LIGHT_RED : COLOR_LIGHT_GREEN);
-        window.draw(dot);
+
+    if (mState == RED && mStopAssetLoaded && mStopSprite.has_value()) {
+        const FloatRect bounds = mStopSprite->getLocalBounds();
+        if (bounds.size.x > 0.f && bounds.size.y > 0.f) {
+            mStopSprite->setScale(Vector2f(
+                static_cast<float>(CELL_SIZE) / bounds.size.x,
+                static_cast<float>(heightCells * CELL_SIZE) / bounds.size.y));
+            mStopSprite->setPosition(Vector2f(px, py));
+            window.draw(*mStopSprite);
+            return;
+        }
     }
+
+    RectangleShape fallback(Vector2f(
+        static_cast<float>(CELL_SIZE - 2),
+        static_cast<float>(heightCells * CELL_SIZE - 2)));
+    fallback.setPosition(Vector2f(px + 1.f, py + 1.f));
+    fallback.setFillColor(mState == RED ? COLOR_LIGHT_RED : COLOR_LIGHT_GREEN);
+    window.draw(fallback);
 }
