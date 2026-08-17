@@ -57,6 +57,7 @@ CGAME::CGAME()
       mNumTrucks(0), mNumCars(0), mNumDinos(0), mNumBirds(0),
       mState(GameState::MENU),
       mTrafficState(CTRAFFICLIGHT::GREEN),
+      mTrafficElapsedMs(0),
       mGreenDurationMs(3000), mRedDurationMs(2000),
       mTrafficStartLoaded(false), mTrafficStoppingLoaded(false)
 // khoi tao constructor co dinh voi level 1 0 diem 3 mang 0 xe 0 animal va xuat hien o giao dien menu dau tien
@@ -229,6 +230,7 @@ void CGAME::InitLanes() {
 	mTrafficState = CTRAFFICLIGHT::GREEN;
 	mGreenDurationMs = max(1000, 3000 - mLevel * 200);
 	mRedDurationMs = 2000;
+	mTrafficElapsedMs = 0;
 	mTrafficClock.restart();
 	loadAllAssets();
 	updateTrafficAudio();
@@ -473,17 +475,20 @@ void CGAME::updatePosAnimal() {
 }
 
 void CGAME::updateTrafficLights() {
+	int dtMs = (int)mTrafficClock.restart().asMilliseconds();
+	mTrafficElapsedMs += dtMs;
+
 	const int durationMs = mTrafficState == CTRAFFICLIGHT::GREEN
 		? mGreenDurationMs
 		: mRedDurationMs;
-	if (mTrafficClock.getElapsedTime().asMilliseconds() < durationMs) {
+	if (mTrafficElapsedMs < durationMs) {
 		return;
 	}
 
+	mTrafficElapsedMs = 0;
 	mTrafficState = mTrafficState == CTRAFFICLIGHT::GREEN
 		? CTRAFFICLIGHT::RED
 		: CTRAFFICLIGHT::GREEN;
-	mTrafficClock.restart();
 
 	for (int i = 0; i < mNumTrucks + mNumCars; i++) {
 		if (mLights[i] != nullptr) {
@@ -537,7 +542,11 @@ void CGAME::setState(GameState state) {
 	if (mState == state) {
 		return;
 	}
+	GameState oldState = mState;
 	mState = state;
+	if (mState == GameState::PLAYING && oldState != GameState::PLAYING) {
+		mTrafficClock.restart();
+	}
 	updateTrafficAudio();
 }
 
@@ -700,7 +709,10 @@ void CGAME::drawStreetZone(RenderWindow& window) {
 // ================================================================
 void CGAME::saveGame(const string& filename) {
 	ofstream ofs(filename);
-	if (!ofs.is_open()) std::cout << "Khong the luu file" << '\n'; return;
+	if (!ofs.is_open()) {
+		std::cout << "Khong the luu file" << '\n';
+		return;
+	}
 
 	ofs << mLevel << '\n';
 	ofs << mScore << '\n';
@@ -728,12 +740,18 @@ void CGAME::saveGame(const string& filename) {
 		ofs << (ac[i] ? ac[i]->getX() : 0) << '\n';
 	}
 
+	ofs << (mTrafficState == CTRAFFICLIGHT::RED ? 0 : 1) << '\n';
+	ofs << mTrafficElapsedMs << '\n';
+
 	ofs.close();
 }
 
 bool CGAME::loadGame(const string& filename) {
 	ifstream ifs(filename);
-	if (!ifs.is_open()) cout << "Khong the mo file save" << '\n'; return false;
+	if (!ifs.is_open()) {
+		cout << "Khong the mo file save" << '\n';
+		return false;
+	}
 
 	int level, score, live, px, py;
 	ifs >> level;
@@ -781,6 +799,36 @@ bool CGAME::loadGame(const string& filename) {
 		ifs >> x;
 		if (i < mNumBirds && ac[i]) ac[i]->setX(x);
 	}
+
+	int savedTrafficState = 1;
+	int savedElapsedMs = 0;
+	if (ifs >> savedTrafficState) {
+		mTrafficState = (savedTrafficState == 0) ? CTRAFFICLIGHT::RED : CTRAFFICLIGHT::GREEN;
+		if (ifs >> savedElapsedMs) {
+			mTrafficElapsedMs = max(0, savedElapsedMs);
+		}
+		for (int i = 0; i < mNumTrucks + mNumCars; i++) {
+			if (mLights[i] != nullptr) {
+				mLights[i]->setState(mTrafficState);
+			}
+		}
+		const bool stopVehicles = (mTrafficState == CTRAFFICLIGHT::RED);
+		for (int i = 0; i < mNumTrucks; i++) {
+			if (axt[i]) {
+				if (stopVehicles) axt[i]->Stop(99999);
+				else axt[i]->Resume();
+			}
+		}
+		for (int i = 0; i < mNumCars; i++) {
+			if (axh[i]) {
+				if (stopVehicles) axh[i]->Stop(99999);
+				else axh[i]->Resume();
+			}
+		}
+	}
+
+	mTrafficClock.restart();
+	updateTrafficAudio();
 
 	ifs.close();
 	return true;

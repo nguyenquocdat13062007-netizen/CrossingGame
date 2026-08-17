@@ -83,6 +83,7 @@ private:
 	// ---- Chu ky den giao thong dung chung ----
 	CTRAFFICLIGHT::State mTrafficState;
 	Clock mTrafficClock;
+	int mTrafficElapsedMs;
 	int mGreenDurationMs;
 	int mRedDurationMs;
 
