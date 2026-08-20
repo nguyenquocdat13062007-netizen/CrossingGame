@@ -71,7 +71,7 @@
       <AdditionalDependencies>sfml-graphics-d.lib;sfml-window-d.lib;sfml-system-d.lib;sfml-audio-d.lib;sfml-network-d.lib;sfml-main-d.lib;opengl32.lib;winmm.lib;gdi32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y /d "$(ProjectDir)SFML-3.1.0\bin\*.dll" "$(OutDir)"
+      <Command>xcopy /y /d "$(ProjectDir)SFML-3.1.0\bin\*d-3.dll" "$(OutDir)"
 if not exist "$(OutDir)Assets" mkdir "$(OutDir)Assets"
 xcopy /y /d /e /i "$(ProjectDir)Assets" "$(OutDir)Assets"
 </Command>
@@ -99,7 +99,11 @@ xcopy /y /d /e /i "$(ProjectDir)Assets" "$(OutDir)Assets"
       <AdditionalDependencies>sfml-graphics.lib;sfml-window.lib;sfml-system.lib;sfml-audio.lib;sfml-network.lib;sfml-main.lib;opengl32.lib;winmm.lib;gdi32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y /d "$(ProjectDir)SFML-3.1.0\bin\*.dll" "$(OutDir)"
+      <Command>xcopy /y /d "$(ProjectDir)SFML-3.1.0\bin\sfml-audio-3.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)SFML-3.1.0\bin\sfml-graphics-3.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)SFML-3.1.0\bin\sfml-network-3.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)SFML-3.1.0\bin\sfml-system-3.dll" "$(OutDir)"
+xcopy /y /d "$(ProjectDir)SFML-3.1.0\bin\sfml-window-3.dll" "$(OutDir)"
 if not exist "$(OutDir)Assets" mkdir "$(OutDir)Assets"
 xcopy /y /d /e /i "$(ProjectDir)Assets" "$(OutDir)Assets"
 </Command>
