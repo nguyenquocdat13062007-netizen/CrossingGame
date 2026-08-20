@@ -15,9 +15,8 @@
 
 class AnimatedSprite {
 private:
-    static constexpr std::size_t MAX_FRAMES = 8;
+    static constexpr std::size_t MAX_FRAMES = 16;
 
-    // Heap allocation keeps each texture address stable when the vector grows.
     std::vector<std::unique_ptr<sf::Texture>> mFrames;
     std::optional<sf::Sprite> mSprite;
     std::size_t mCurrentFrame;
@@ -38,7 +37,6 @@ public:
     AnimatedSprite& operator=(AnimatedSprite&&) noexcept = default;
 
     void clear() {
-        // Release the texture reference before destroying the textures.
         mSprite.reset();
         mFrames.clear();
         mCurrentFrame = 0;
@@ -54,6 +52,7 @@ public:
         if (!texture->loadFromFile(filename)) {
             return false;
         }
+        texture->setSmooth(false); // Sharp pixel-perfect filtering
 
         mFrames.push_back(std::move(texture));
         if (!mSprite.has_value()) {
@@ -83,6 +82,18 @@ public:
         return !mFrames.empty() && mSprite.has_value();
     }
 
+    std::size_t getFrameCount() const { return mFrames.size(); }
+    std::size_t getCurrentFrame() const { return mCurrentFrame; }
+
+    void nextFrame() {
+        if (mFrames.size() <= 1) return;
+        mCurrentFrame = (mCurrentFrame + 1) % mFrames.size();
+        mElapsed = 0.f;
+        if (mSprite.has_value() && mCurrentFrame < mFrames.size()) {
+            mSprite->setTexture(*mFrames[mCurrentFrame]);
+        }
+    }
+
     void update(float dt) {
         if (mFrames.size() <= 1 || !std::isfinite(dt) || dt <= 0.f) {
             return;
@@ -104,13 +115,13 @@ public:
         mSprite->setTexture(*mFrames[mCurrentFrame]);
     }
 
-    void draw(sf::RenderWindow& window,
-              float px,
-              float py,
-              int widthCells = 1,
-              int heightCells = 1,
-              bool flipX = false) {
-        if (!isLoaded() || widthCells <= 0 || heightCells <= 0) {
+    void drawExact(sf::RenderWindow& window,
+                   float px,
+                   float py,
+                   float widthPx,
+                   float heightPx,
+                   bool flipX = false) {
+        if (!isLoaded() || widthPx <= 0.f || heightPx <= 0.f) {
             return;
         }
 
@@ -119,20 +130,40 @@ public:
             return;
         }
 
-        const float pixelWidth = static_cast<float>(widthCells * CELL_SIZE);
-        const float pixelHeight = static_cast<float>(heightCells * CELL_SIZE);
-        const float scaleX = pixelWidth / bounds.size.x;
-        const float scaleY = pixelHeight / bounds.size.y;
+        const float scaleX = widthPx / bounds.size.x;
+        const float scaleY = heightPx / bounds.size.y;
 
         if (flipX) {
             mSprite->setScale(sf::Vector2f(-scaleX, scaleY));
-            mSprite->setPosition(sf::Vector2f(px + pixelWidth, py));
+            mSprite->setPosition(sf::Vector2f(px + widthPx, py));
         } else {
             mSprite->setScale(sf::Vector2f(scaleX, scaleY));
             mSprite->setPosition(sf::Vector2f(px, py));
         }
 
         window.draw(*mSprite);
+    }
+
+    void draw(sf::RenderWindow& window,
+              float px,
+              float py,
+              int widthCells = 1,
+              int heightCells = 1,
+              bool flipX = false) {
+        drawExact(window, px, py, (float)(widthCells * CELL_SIZE), (float)(heightCells * CELL_SIZE), flipX);
+    }
+
+    void drawProportional(sf::RenderWindow& window,
+                          float px,
+                          float py,
+                          int widthCells,
+                          bool flipX = false) {
+        if (!isLoaded() || widthCells <= 0) return;
+        const sf::FloatRect bounds = mSprite->getLocalBounds();
+        if (bounds.size.x <= 0.f || bounds.size.y <= 0.f) return;
+        float w = (float)(widthCells * CELL_SIZE);
+        float h = w * (bounds.size.y / bounds.size.x);
+        drawExact(window, px, py - (h - (float)CELL_SIZE) * 0.5f, w, h, flipX);
     }
 
     void reset() {

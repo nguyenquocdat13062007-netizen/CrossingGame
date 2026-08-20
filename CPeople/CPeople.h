@@ -7,6 +7,10 @@
 #include "CAnimal.h"
 #include "AnimatedSprite.h"
 #include <SFML/Graphics.hpp>
+#include <string>
+#include <vector>
+#include <optional>
+
 using namespace std;
 using namespace sf;
 
@@ -14,53 +18,64 @@ using namespace sf;
 // LOP CPEOPLE - Nguoi choi voi sprite PNG + animation di chuyen
 // ================================================================
 class CPEOPLE {
-private:
-	int  mX, mY; // Tọa độ hiện tại của người chơi trên màn hình (mX: cột, mY: hàng)
-	bool mAlive; // true = người chơi còn sống, false = người chơi đã chết
-	bool mFinished; // true = người chơi đã đến vạch FINISH, false = chưa đến vạch FINISH
-	int  mDirection; // 1 = di sang phải, -1 = di sang trái, 0 = đứng yên (không di chuyển)
+public:
+	enum Direction { DIR_UP, DIR_DOWN, DIR_LEFT, DIR_RIGHT };
 
-	AnimatedSprite mAnim;  // Animation của người chơi, quản lý bởi AnimatedSprite
+private:
+	int  mX, mY; // Toa do hien tai cua nguoi choi tren man hinh
+	bool mAlive; // true = con song, false = da chet
+	bool mFinished; // true = da den vach FINISH
+	Direction mDir; // Huong di chuyen hien tai
+
+	AnimatedSprite mAnimUp;    // 6 frames chay len
+	AnimatedSprite mAnimDown;  // Frame chay xuong
+	AnimatedSprite mAnimLeft;  // Frame chay trai
+	AnimatedSprite mAnimRight; // Frame chay phai
+
+	Texture mTexDead;
+	optional<Sprite> mDeadSprite;
+	bool mDeadLoaded;
 
 public:
-    CPEOPLE();
-    CPEOPLE(int startX, int startY);
+	CPEOPLE();
+	CPEOPLE(int startX, int startY);
 
-	int  getX()       const { return mX; } // Trả về cột hiện tại của người chơi
-	int  getY()       const { return mY; } // Trả về hàng hiện tại của người chơi
-	bool isAlive()    const { return mAlive; } // Trả về true nếu người chơi còn sống, false nếu đã chết
-	bool isDead()     const { return !mAlive; } // Trả về true nếu người chơi đã chết, false nếu còn sống
-	bool isFinished() const { return mFinished; } // Trả về true nếu người chơi đã đến vạch FINISH, false nếu chưa đến vạch FINISH
+	int  getX()       const { return mX; }
+	int  getY()       const { return mY; }
+	bool isAlive()    const { return mAlive; }
+	bool isDead()     const { return !mAlive; }
+	bool isFinished() const { return mFinished; }
+	Direction getDirection() const { return mDir; }
 
-    // Load anh sprite nguoi choi
-    // frame1, frame2: 2 frame di chuyen (walk animation)
-	void loadAssets(const std::string& frame1, const std::string& frame2 = ""); // Gọi sau khi new, nếu load thất bại thì animation sẽ không hiển thị nhưng người chơi vẫn hoạt động bình thường
+	// Load anh sprite nguoi choi
+	void loadAssets();
+	void loadAssets(const std::string& frame1, const std::string& frame2 = "");
 
-    // Cap nhat animation (goi moi frame)
-	void updateAnim(float dt) { mAnim.update(dt); } // Cập nhật animation theo thời gian, gọi mỗi frame từ CGAME.updatePlayer()
+	// Cap nhat animation theo thoi gian
+	void updateAnim(float dt);
 
-    // Di chuyen - co kiem tra bien man hinh
-	void Up(int step = 1); // Di chuyển người chơi lên trên (giảm mY), step = số ô di chuyển (mặc định 1)
-	void Down(int step = 1); // Di chuyển người chơi xuống dưới (tăng mY), step = số ô di chuyển (mặc định 1)
-	void Left(int step = 1); // Di chuyển người chơi sang trái (giảm mX), step = số ô di chuyển (mặc định 1)
-	void Right(int step = 1); // Di chuyển người chơi sang phải (tăng mX), step = số ô di chuyển (mặc định 1)
+	// Di chuyen - co kiem tra bien man hinh
+	void Up(int step = 1);
+	void Down(int step = 1);
+	void Left(int step = 1);
+	void Right(int step = 1);
 
-    // Ve nguoi choi len cua so SFML
-    // font chi dung khi chua co sprite (fallback chu "Y")
-	void Draw(RenderWindow& window, Font& font); // Vẽ người chơi lên cửa sổ, gọi mỗi frame từ CGAME.drawGame()
+	// Ve nguoi choi len cua so SFML
+	void Draw(RenderWindow& window, Font& font);
 
-    // Kiem tra va cham
-	bool isImpact(const CVEHICLE* v) const; // Va cham khi mX nguoi >= mX xe VÀ <= mX xe + mWidth, va cham chi tinh khi xe dang di chuyen (khong tinh khi xe dang dung)
-	bool isImpact(const CANIMAL* a)  const; // Va cham khi mX nguoi >= mX thu VÀ <= mX thu + mWidth, va cham chi tinh khi thu dang di chuyen (khong tinh khi thu dang dung)
+	// Kiem tra va cham
+	bool isImpact(const CVEHICLE* v) const;
+	bool isImpact(const CANIMAL* a)  const;
 
-    // Kiem tra da den FINISH_Y chua
-	bool checkFinish(); // Dung khi mY nguoi <= FINISH_Y, dat mFinished = true, va tra ve true; nguoc lai tra ve false
+	// Kiem tra da den FINISH_Y chua
+	bool checkFinish();
+	bool checkFinish(int finishY);
 
-    // Reset ve vi tri ban dau
-	void Reset(int startX = SCREEN_WIDTH / 2, int startY = START_Y); // Dat mX = startX, mY = startY, mAlive = true, mFinished = false, mDirection = 1
+	// Reset ve vi tri ban dau
+	void Reset(int startX = SCREEN_WIDTH / 2, int startY = START_Y);
 
-    // Dat trang thai chet
-	void Die(); // Dat mAlive = false, mDirection = 0, va reset animation ve frame dau tien (mAnim.clear() + mAnim.addFrame(frame1))
+	// Dat trang thai chet
+	void Die();
 };
 
 #endif

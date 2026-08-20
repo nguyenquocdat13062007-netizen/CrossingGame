@@ -7,77 +7,79 @@ using namespace sf;
 // ================================================================
 
 CVEHICLE::CVEHICLE()
-    : mX(0), mY(0), mSpeed(1), mDirection(1),
+    : mX(0), mY(0), mSpeed(2), mMoveCounter(0), mDirection(1),
     mWidth(3), mColor(COLOR_CAR),
     mStopped(false), mStopDurationMs(0),
-    mAnim(0.18f) {
+    mAnim(0.15f) {
 }
 
 CVEHICLE::CVEHICLE(int x, int y, int speed, int dir, Color color, int width)
-    : mX(x), mY(y), mSpeed(speed), mDirection(dir),
+    : mX(x), mY(y), mSpeed(speed > 0 ? speed : 2), mMoveCounter(0), mDirection(dir),
     mWidth(width), mColor(color),
     mStopped(false), mStopDurationMs(0),
-    mAnim(0.18f) {
+    mAnim(0.15f) {
 }
 
 // ----------------------------------------------------------------
-// loadAssets — Load 1 hoặc 2 frame ảnh vào AnimatedSprite
-// Dùng mAnim.loadAssets() (hàm mới) để gộp gọn
+// loadAssets — Load danh sach frame anh vao AnimatedSprite
 // ----------------------------------------------------------------
+void CVEHICLE::loadAssets(const std::vector<std::string>& files) {
+    mAnim.loadAssets(files);
+}
+
 void CVEHICLE::loadAssets(const std::string& frame1, const std::string& frame2) {
     vector<string> files;
     files.push_back(frame1);
     if (!frame2.empty()) files.push_back(frame2);
     mAnim.loadAssets(files);
-    // Nếu load thất bại → mAnim.isLoaded() = false
-    // → Draw() tự dùng fallback hình chữ nhật màu, game vẫn chạy bình thường
 }
 
 // ----------------------------------------------------------------
-// Move — Di chuyển xe, wrap khi ra khỏi màn hình
+// Move — Di chuyen xe, wrap khi ra khoi man hinh
 // ----------------------------------------------------------------
 void CVEHICLE::Move(int screenWidthCells) {
     if (mStopped) return;
 
-    mX += mDirection * mSpeed;
+    mMoveCounter++;
+    if (mMoveCounter < mSpeed) {
+        return;
+    }
+    mMoveCounter = 0;
 
-    if (mX >= screenWidthCells)    mX = -mWidth;          // Ra phải → vào trái
-    else if (mX + mWidth <= 0)     mX = screenWidthCells; // Ra trái → vào phải
+    mX += mDirection;
+
+    if (mX >= screenWidthCells)    mX = -mWidth;          // Ra phai -> vao trai
+    else if (mX + mWidth <= 0)     mX = screenWidthCells; // Ra trai -> vao phai
 }
 
 // ----------------------------------------------------------------
-// Draw — Vẽ xe lên cửa sổ SFML
-// Nếu có ảnh PNG → dùng AnimatedSprite (với flipX khi đi trái)
-// Nếu chưa có ảnh → vẽ hình chữ nhật màu fallback
+// Draw — Ve xe len cua so SFML theo ti le goc dep mat
 // ----------------------------------------------------------------
 void CVEHICLE::Draw(RenderWindow& window) {
     float px = CellToPixel(mX);
     float py = CellToPixel(mY);
 
     if (mAnim.isLoaded()) {
-        bool flipX = (mDirection == -1); // Lật ảnh khi đi sang trái
-        mAnim.draw(window, px, py, mWidth, 1, flipX);
+        // Anh PNG goc quay mat sang TRAI (-1) -> can lat flipX khi di sang PHAI (+1)
+        bool flipX = (mDirection == 1);
+        mAnim.drawProportional(window, px, py, mWidth, flipX);
     }
     else {
-        // Fallback: hình chữ nhật màu — hữu ích khi test chưa có asset PNG
         RectangleShape rect = MakeShape(mX, mY, mWidth, mColor);
         window.draw(rect);
     }
 }
 
 // ----------------------------------------------------------------
-// isImpact — Kiểm tra xe có đụng người tại ô lưới (px, py) không
-// Điều kiện va chạm:
-//   1. Cùng hàng:  mY == py
-//   2. Cột người nằm trong vùng xe: mX <= px < mX + mWidth
+// isImpact — Kiem tra xe co dung nguoi tai o luoi (px, py) khong
 // ----------------------------------------------------------------
 bool CVEHICLE::isImpact(int px, int py) const {
-    if (mY != py) return false;                        // Khác hàng → không đụng
-    return (px >= mX && px < mX + mWidth);             // Người trong vùng xe?
+    if (mY != py) return false;
+    return (px >= mX && px < mX + mWidth);
 }
 
 // ----------------------------------------------------------------
-// Stop — Dừng xe trong duration_ms milliseconds
+// Stop — Dung xe trong duration_ms milliseconds
 // ----------------------------------------------------------------
 void CVEHICLE::Stop(int duration_ms) {
     mStopped = true;
@@ -86,7 +88,7 @@ void CVEHICLE::Stop(int duration_ms) {
 }
 
 // ----------------------------------------------------------------
-// Resume — Cho xe chạy lại ngay lập tức
+// Resume — Cho xe chay lai ngay lap tuc
 // ----------------------------------------------------------------
 void CVEHICLE::Resume() {
     mStopped = false;
@@ -94,8 +96,7 @@ void CVEHICLE::Resume() {
 }
 
 // ----------------------------------------------------------------
-// UpdateStopStatus — Tự Resume() nếu đã dừng đủ thời gian
-// CGAME gọi hàm này mỗi frame cho từng xe
+// UpdateStopStatus — Tu Resume() neu da dung du thoi gian
 // ----------------------------------------------------------------
 void CVEHICLE::UpdateStopStatus() {
     if (!mStopped) return;
@@ -106,37 +107,82 @@ void CVEHICLE::UpdateStopStatus() {
 // ================================================================
 // CCAR
 // ================================================================
-CCAR::CCAR() : CVEHICLE(0, 5, 2, 1, COLOR_CAR, 2) {}
+CCAR::CCAR() : CVEHICLE(0, 5, 2, 1, COLOR_CAR, 4) {
+    loadAssets({
+        "Assets/images/vehicle/car.png",
+        "Assets/images/vehicle/car2.png",
+        "Assets/images/vehicle/car3.png"
+    });
+}
 
 CCAR::CCAR(int x, int y, int speed, int dir)
-    : CVEHICLE(x, y, speed, dir, COLOR_CAR, 2) {
+    : CVEHICLE(x, y, speed, dir, COLOR_CAR, 4) {
+    loadAssets({
+        "Assets/images/vehicle/car.png",
+        "Assets/images/vehicle/car2.png",
+        "Assets/images/vehicle/car3.png"
+    });
 }
 
 // ================================================================
 // CTRUCK
 // ================================================================
-CTRUCK::CTRUCK() : CVEHICLE(0, 7, 1, -1, COLOR_TRUCK, 3) {}
+CTRUCK::CTRUCK() : CVEHICLE(0, 7, 4, -1, COLOR_TRUCK, 4) {
+    loadAssets({
+        "Assets/images/vehicle/truck.png",
+        "Assets/images/vehicle/truck2.png",
+        "Assets/images/vehicle/truck3.png"
+    });
+}
 
 CTRUCK::CTRUCK(int x, int y, int speed, int dir)
-    : CVEHICLE(x, y, speed, dir, COLOR_TRUCK, 3) {
+    : CVEHICLE(x, y, speed, dir, COLOR_TRUCK, 4) {
+    loadAssets({
+        "Assets/images/vehicle/truck.png",
+        "Assets/images/vehicle/truck2.png",
+        "Assets/images/vehicle/truck3.png"
+    });
 }
 
 // ================================================================
 // CTRAFFICLIGHT
 // ================================================================
-CTRAFFICLIGHT::CTRAFFICLIGHT(int laneY)
+CTRAFFICLIGHT::CTRAFFICLIGHT(int topLaneY, int bottomLaneY, int greenMs, int redMs, int initialPhaseMs)
     : mState(GREEN),
-      mLaneY(laneY),
+      mLaneY(topLaneY),
+      mLaneBottomY(bottomLaneY > 0 ? bottomLaneY : topLaneY),
+      mGreenDurationMs(greenMs > 0 ? greenMs : 3000),
+      mRedDurationMs(redMs > 0 ? redMs : 2000),
+      mElapsedMs(initialPhaseMs),
       mGreenAnim(0.12f),
       mStopAssetLoaded(false) {
+    if (mElapsedMs >= mGreenDurationMs) {
+        mState = RED;
+        mElapsedMs %= mRedDurationMs;
+    }
+}
+
+int CTRAFFICLIGHT::updateTimer(int dtMs) {
+    mElapsedMs += dtMs;
+    const int duration = (mState == GREEN) ? mGreenDurationMs : mRedDurationMs;
+    if (mElapsedMs >= duration) {
+        mElapsedMs = 0;
+        State newState = (mState == GREEN ? RED : GREEN);
+        setState(newState);
+        return (newState == RED) ? 1 : 2;
+    }
+    return 0;
 }
 
 // ----------------------------------------------------------------
-// loadAssets — Load ảnh đèn dừng và animation đèn chạy
+// loadAssets — Load anh den dung va animation den chay
 // ----------------------------------------------------------------
 bool CTRAFFICLIGHT::loadAssets(const std::string& stopImg,
                                const std::vector<std::string>& goFrames) {
     const bool stopLoaded = mTexStop.loadFromFile(stopImg);
+    if (stopLoaded) {
+        mTexStop.setSmooth(false);
+    }
     const bool greenLoaded = mGreenAnim.loadAssets(goFrames);
 
     mStopAssetLoaded = stopLoaded;
@@ -164,16 +210,16 @@ void CTRAFFICLIGHT::updateAnimation(float dt) {
 }
 
 // ----------------------------------------------------------------
-// Draw — Vẽ đèn tại ô lưới (x, y)
-// Có ảnh → vẽ sprite | Không có ảnh → vẽ hình tròn màu fallback
+// Draw — Ve den giao thong lon, ro rang
 // ----------------------------------------------------------------
 void CTRAFFICLIGHT::Draw(RenderWindow& window, int x, int y) {
-    const float px = CellToPixel(x);
-    const float py = CellToPixel(y);
-    const int heightCells = 2;
+    const float px = CellToPixel(x) - 4.f;
+    const float py = CellToPixel(y) - 8.f;
+    const float drawWidth = 36.f;
+    const float drawHeight = 72.f;
 
     if (mState == GREEN && mGreenAnim.isLoaded()) {
-        mGreenAnim.draw(window, px, py, 1, heightCells);
+        mGreenAnim.drawExact(window, px, py, drawWidth, drawHeight);
         return;
     }
 
@@ -181,17 +227,15 @@ void CTRAFFICLIGHT::Draw(RenderWindow& window, int x, int y) {
         const FloatRect bounds = mStopSprite->getLocalBounds();
         if (bounds.size.x > 0.f && bounds.size.y > 0.f) {
             mStopSprite->setScale(Vector2f(
-                static_cast<float>(CELL_SIZE) / bounds.size.x,
-                static_cast<float>(heightCells * CELL_SIZE) / bounds.size.y));
+                drawWidth / bounds.size.x,
+                drawHeight / bounds.size.y));
             mStopSprite->setPosition(Vector2f(px, py));
             window.draw(*mStopSprite);
             return;
         }
     }
 
-    RectangleShape fallback(Vector2f(
-        static_cast<float>(CELL_SIZE - 2),
-        static_cast<float>(heightCells * CELL_SIZE - 2)));
+    RectangleShape fallback(Vector2f(drawWidth - 2.f, drawHeight - 2.f));
     fallback.setPosition(Vector2f(px + 1.f, py + 1.f));
     fallback.setFillColor(mState == RED ? COLOR_LIGHT_RED : COLOR_LIGHT_GREEN);
     window.draw(fallback);

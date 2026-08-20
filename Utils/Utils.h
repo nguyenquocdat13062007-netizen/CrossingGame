@@ -13,33 +13,36 @@ using namespace sf;
 //==============================================================
 // KICH THUOC LUOI (GRID)
 //==============================================================
-const int SCREEN_WIDTH = 40; // 40 o luoi ngang
-const int SCREEN_HEIGHT = 24; // 24 o luoi doc
+const int SCREEN_WIDTH = 40;  // 40 o luoi ngang
+const int SCREEN_HEIGHT = 24; // 24 o luoi doc (chieu cao khung nhin - Viewport)
+const int MAP_HEIGHT = 72;    // 72 o luoi doc (chieu cao toan ban do - gap 3 lan man hinh goc)
 
 //==============================================================
 // KICH THUOC PIXEL
 //==============================================================
 const int CELL_SIZE = 24; // 1 o luoi = 24 pixel
-const int WINDOW_WIDTH = SCREEN_WIDTH * CELL_SIZE;  // chiều rộng cửa sổ = số ô ngang * kích thước ô 
-const int WINDOW_HEIGHT = SCREEN_HEIGHT * CELL_SIZE;  // chiều cao cửa sổ = số ô dọc * kích thước ô
+const int WINDOW_WIDTH = SCREEN_WIDTH * CELL_SIZE;    // 960 pixel
+const int WINDOW_HEIGHT = SCREEN_HEIGHT * CELL_SIZE;  // 576 pixel
+const int MAP_PIXEL_HEIGHT = MAP_HEIGHT * CELL_SIZE;  // 1728 pixel
 
 //==============================================================
 // VI TRI DUONG
 //==============================================================
-const int ROAD_TOP = 2; // 2 ô lưới từ trên xuống là đường, 2 ô cuối cùng (22, 23) là vạch START
-const int ROAD_BOTTOM = SCREEN_HEIGHT - 3; // 2 ô lưới từ dưới lên là đường, 2 ô cuối cùng (0, 1) là vạch FINISH
-const int FINISH_Y = ROAD_TOP; // Y của vạch FINISH
-const int START_Y = ROAD_BOTTOM; // Y của vạch START
+const int ROAD_TOP = 2;              // 2 o dau tren cung la vach FINISH (y = 0, 1, 2)
+const int ROAD_BOTTOM = MAP_HEIGHT - 3; // Start o duoi cung (y = 68, 69)
+const int FINISH_Y = ROAD_TOP;       // Y cua vach FINISH
+const int START_Y = ROAD_BOTTOM;     // Y cua vach START
 
 //==============================================================
 // CAU HINH GAME
 //==============================================================
-const int MAX_LEVEL = 5; // Mức độ khó tối đa của trò chơi 
-const int MAX_TRUCKS = 3; // Số xe tải tối đa trên đường cùng lúc, theo yêu cầu do an
-const int MAX_CARS = 4; // Số xe hơi tối đa trên đường cùng lúc, theo yêu cầu do an
-const int MAX_DINOS = 2; // Số da lan tối đa trên đường cùng lúc, theo yêu cầu do an
-const int MAX_BIRDS = 3; // Số chim tối đa trên đường cùng lúc, theo yêu cầu do an
-const int LANE_COUNT = 8; // Số làn đường có xe (không tính làn đường trên cùng và dưới cùng chỉ có thú)
+const int MAX_LEVEL = 5;  // Muc do kho toi da cua tro choi
+const int MAX_TRUCKS = 36; // So xe tai toi da tren toan ban do dai
+const int MAX_CARS = 56;   // So xe hoi toi da tren toan ban do dai
+const int MAX_DINOS = 8;   // So da lan toi da tren toan ban do dai
+const int MAX_BIRDS = 36;  // So zombie toi da tren toan ban do dai
+const int MAX_LIGHTS = 8;  // So den giao thong toi da tren toan ban do
+const int LANE_COUNT = 48; // So lan duong toan ban do
 
 //==============================================================
 // BIEN TOAN CUC - dung chung giua main va SubThread

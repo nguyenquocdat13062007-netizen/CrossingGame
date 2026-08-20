@@ -3,22 +3,36 @@
 #define CGAME_H
 
 // ================================================================
-// FIX: them windows.h TRUOC SFML de co HANDLE, SuspendThread,
-//      ResumeThread, Sleep - tranh loi "HANDLE undefined"
+// Ho tro da nen tang: Windows (Visual Studio) & macOS (CLion)
 // ================================================================
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#else
+#include <chrono>
+#include <thread>
+using HANDLE = void*;
+inline unsigned long SuspendThread(HANDLE) { return 0; }
+inline unsigned long ResumeThread(HANDLE) { return 0; }
+inline void Sleep(unsigned long ms) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+#endif
 
 #include "Utils.h"
 #include "CPeople.h"
 #include "CVehicle.h"
 #include "CAnimal.h"
 #include <SFML/Graphics.hpp>
-#include <SFML/Audio/Music.hpp>
+#include <SFML/Audio.hpp>
 #include <fstream>
 #include <string>
+#include <vector>
+#include <optional>
+#include <mutex>
+
 using namespace std;
 using namespace sf;
 
@@ -26,59 +40,52 @@ using namespace sf;
 // ENUM TRANG THAI MAN HINH
 // ================================================================
 enum class GameState {
-	MENU, // Trang thai hien menu chinh, cho nguoi choi chon Start, Load, Exit
-	PLAYING, // Trang thai dang choi, SubThread cap nhat logic, main render
-	PAUSED, // Trang thai tam dung, SubThread khong cap nhat logic, main render menu pause
-	DEAD, // Trang thai nguoi choi da chet, SubThread khong cap nhat logic, main render menu dead
-	GAMEOVER, // Trang thai ket thuc game, nguoi choi het mang, SubThread khong cap nhat logic, main render menu game over
-	WIN, // Trang thai nguoi choi chien thang, dat vạch FINISH, SubThread khong cap nhat logic, main render menu win
-    LEVEL_UP   // Dat boi SubThread khi qua man, main xu ly nextLevel() an toan
+	MENU,      // Trang thai hien menu chinh, cho nguoi choi chon Start, Load, Settings, Exit
+	SETTINGS,  // Trang thai cai dat (bat/tat am thanh, chinh volume, huong dan phim)
+	LOAD_GAME, // Trang thai menu chon 4 o save slot de Load
+	SAVE_GAME, // Trang thai menu chon 4 o save slot de Save
+	PLAYING,   // Trang thai dang choi, SubThread cap nhat logic, main render
+	PAUSED,    // Trang thai tam dung, SubThread khong cap nhat logic, main render menu pause
+	DEAD,      // Trang thai nguoi choi da chet, SubThread khong cap nhat logic, main render menu dead
+	GAMEOVER,  // Trang thai ket thuc game, nguoi choi het mang, SubThread khong cap nhat logic, main render menu game over
+	WIN,       // Trang thai nguoi choi chien thang, dat vach FINISH, SubThread khong cap nhat logic, main render menu win
+	LEVEL_UP   // Dat boi SubThread khi qua man, main xu ly nextLevel() an toan
+};
+
+// ================================================================
+// STRUCT THONG TIN SAVE SLOT
+// ================================================================
+struct SaveSlotInfo {
+	bool exists;
+	int level;
+	int score;
+	int lives;
+	string timeStr;
 };
 
 // ================================================================
 // LOP CGAME - Quan ly toan bo game
-//
-// Tuong ung voi yeu cau do an:
-//   axt  = CTRUCK*  mang xe tai      (ten goc: axt)
-//   axh  = CCAR*    mang xe hoi      (ten goc: axh)
-//   akl  = CROCK*   mang da lan      (ten goc: akl, thay CDINAUSOR)
-//   ac   = CBIRD*   mang chim        (ten goc: ac)
-//   cn   = CPEOPLE  nguoi choi       (ten goc: cn)
-//
-// Ham theo yeu cau do an:
-//   CGAME()           - Chuan bi du lieu tat ca doi tuong
-//   drawGame()        - Ve tro choi ra man hinh
-//   ~CGAME()          - Huy tai nguyen
-//   getPeople()       - Lay thong tin nguoi
-//   getVehicle()      - Lay danh sach xe
-//   getAnimal()       - Lay danh sach thu
-//   resetGame()       - Thiet lap lai toan bo du lieu
-//   startGame()       - Bat dau vao tro choi
-//   loadGame()        - Tai lai tro choi da luu
-//   saveGame()        - Luu du lieu tro choi
-//   pauseGame()       - Tam dung Thread (nhan HANDLE tu main)
-//   resumeGame()      - Quay lai Thread (nhan HANDLE tu main)
-//   exitGame()        - Thoat Thread    (nhan HANDLE tu main)
-//   updatePosPeople() - Dieu khien di chuyen CPEOPLE
-//   updatePosVehicle()- CTRUCK & CCAR di chuyen
-//   updatePosAnimal() - CROCK & CBIRD di chuyen
 // ================================================================
 class CGAME {
 private:
-    // ---- Mang doi tuong (ten theo yeu cau do an) ----
-    CTRUCK* axt[MAX_TRUCKS];                 // xe tai
-    CCAR* axh[MAX_CARS];                   // xe hoi
-    CROCK* akl[MAX_DINOS];                  // da lan (thay CDINAUSOR)
-    CBIRD* ac[MAX_BIRDS];                   // chim
-    CTRAFFICLIGHT* mLights[MAX_TRUCKS + MAX_CARS];  // den giao thong
+	// ---- Mang doi tuong (ten theo yeu cau do an) ----
+	CTRUCK* axt[MAX_TRUCKS];                         // xe tai
+	CCAR* axh[MAX_CARS];                             // xe hoi
+	CROCK* akl[MAX_DINOS];                           // da lan (thay CDINAUSOR)
+	CBIRD* ac[MAX_BIRDS];                            // zombie (thay CBIRD)
+	CTRAFFICLIGHT* mLights[MAX_LIGHTS];              // den giao thong tung khu vuc
 
-    CPEOPLE cn;  // nguoi choi (composition)
+	CPEOPLE cn;  // nguoi choi (composition)
 
-    // ---- Trang thai ----
-	int mLevel, mScore, mLives; // level, diem, mang (theo yeu cau do an)
-	int mNumTrucks, mNumCars, mNumDinos, mNumBirds; // so luong xe/thu hien tai tren duong, cap nhat moi level trong InitLanes()
+	// ---- Trang thai ----
+	int mLevel, mScore, mLives; // level, diem, mang
+	int mNumTrucks, mNumCars, mNumDinos, mNumBirds, mNumLights; // so luong xe/thu/den hien tai
+	int mStartY, mFinishY; // Vi tri xuat phat va ve dich theo tung man choi
 
-	GameState mState; // Trang thai hien tai cua game (MENU, PLAYING, PAUSED, DEAD, GAMEOVER, WIN, LEVEL_UP)
+	GameState mState;    // Trang thai hien tai cua game
+	int mMenuOption;     // 0: Play, 1: Load, 2: Settings, 3: Exit
+	int mSettingsOption; // 0: Music, 1: SFX, 2: Back to Menu
+	int mSelectedSlot;   // 0..3 (Save / Load slots 1 to 4)
 
 	// ---- Chu ky den giao thong dung chung ----
 	CTRAFFICLIGHT::State mTrafficState;
@@ -87,79 +94,216 @@ private:
 	int mGreenDurationMs;
 	int mRedDurationMs;
 
-	// ---- Am thanh den giao thong ----
-	Music mTrafficStart;
+	// ---- Camera theo doi nguoi choi ----
+	float mCameraY;      // Toa do Y muot ma cua camera (pixel)
+
+	// ---- Che do Debug / Bat tu (God Mode & Developer Console) ----
+	bool mGodMode;
+	bool mDebugMenuOpen;
+	int  mDebugMenuOption;
+
+	// ---- Am thanh & Nhac nen chi tiet ----
+	bool mMusicEnabled;
+	bool mSfxEnabled;
+	float mMusicVolume;
+	float mSfxVolume;
+
+	Music mMusicMenu;
+	Music mMusicGame;
+	Music mMusicCarPassing;
+	Music mMusicWin;
+	Music mMusicGameOver;
 	Music mTrafficStopping;
-	bool mTrafficStartLoaded;
+	Music mTrafficStart;
+
+	bool mMusicMenuLoaded;
+	bool mMusicGameLoaded;
+	bool mMusicCarPassingLoaded;
+	bool mMusicWinLoaded;
+	bool mMusicGameOverLoaded;
 	bool mTrafficStoppingLoaded;
+	bool mTrafficStartLoaded;
+
+	SoundBuffer mBufDie;
+	SoundBuffer mBufLevelWin;
+	SoundBuffer mBufUIMenu;
+	SoundBuffer mBufUIError;
+
+	optional<Sound> mSfxDie;
+	optional<Sound> mSfxLevelWin;
+	optional<Sound> mSfxUIMenu;
+	optional<Sound> mSfxUIError;
+
+	bool mSfxDieLoaded;
+	bool mSfxLevelWinLoaded;
+	bool mSfxUIMenuLoaded;
+	bool mSfxUIErrorLoaded;
+
+	void initAudio();
+	void applyVolumes();
 	void updateTrafficAudio();
 	void stopTrafficAudio();
+	void playTrafficStoppingSound();
+	void playTrafficStartSound();
+	void updateZombieAudio();
+	void updateStateAudio(GameState oldState, GameState newState);
 
-    // ---- Bản đồ (Tilemap) ----
-	int mTileMap[SCREEN_HEIGHT][SCREEN_WIDTH]; // Ma trận lưu vị trí tile background
+	// ---- Ban do (Tilemap) ----
+	int mTileMap[MAP_HEIGHT][SCREEN_WIDTH];
 
-    // ---- Ham noi bo ----
-	void InitLanes(); // Tao xe/thu/den theo mLevel
-	void loadAllAssets(); // Gan PNG cho tung doi tuong, goi sau khi new doi tuong trong InitLanes()
-	void loadMapFromFile(const std::string& filename = "Assets/map.txt"); // Nạp ma trận bản đồ từ file text
-	int  GetLaneY(int laneIndex); // Tra ve Y cua lan laneIndex (0-based, chi co xe/thu o lane 0-7, lane 8 la vạch FINISH, lane 9 la vạch START)
+	// ---- UI Textures & Sprites ----
+	Texture mTexMenuBg;
+	Texture mTexTitleLogo;
+	Texture mTexPanelPopup;
+	Texture mTexBtnPlay;
+	Texture mTexBtnLoad;
+	Texture mTexBtnSetting;
+	Texture mTexBtnResume;
+	Texture mTexBtnExit;
+	bool mMenuAssetsLoaded;
 
-	void drawBuildingsZone(RenderWindow& window); // Ve khu vuc nha cao tang o 2 ben duong, chi ve khi mLevel >= 3
-	void drawStreetZone(RenderWindow& window); // Ve khu vuc duong pho o giua, luon ve o moi level
+	// ---- Dong bo da tieu trinh (Thread Safety) ----
+	mutable std::recursive_mutex mGameMutex;
+
+	// ---- Ham noi bo ----
+	void InitLanes();
+	void loadAllAssets();
+	void loadMapFromFile(const std::string& filename = "Assets/map.txt");
+	int  GetLaneY(int laneIndex);
+
+	void drawBuildingsZone(RenderWindow& window);
+	void drawStreetZone(RenderWindow& window);
+	void drawHUD(RenderWindow& window, Font& font);
 
 public:
-    CGAME();   // Chuan bi du lieu cho tat ca cac doi tuong
-    ~CGAME();  // Huy tai nguyen da cap phat
+	CGAME();
+	~CGAME();
 
-    // ----------------------------------------------------------------
-    // CAC HAM THEO YEU CAU DO AN
-    // ----------------------------------------------------------------
-    void     drawGame(RenderWindow& window, Font& font); // Ve tro choi ra man hinh
-    CPEOPLE& getPeople() { return cn; }               // Lay thong tin nguoi
-    CVEHICLE** getVehicle();                             // Lay danh sach xe
-    CANIMAL** getAnimal();                              // Lay danh sach thu
+	// ----------------------------------------------------------------
+	// CAC HAM THEO YEU CAU DO AN
+	// ----------------------------------------------------------------
+	void     drawGame(RenderWindow& window, Font& font);
+	CPEOPLE& getPeople() { return cn; }
+	CVEHICLE** getVehicle();
+	CANIMAL** getAnimal();
 
-    void resetGame();                        // Thiet lap lai toan bo du lieu nhu luc dau
-    void startGame();                        // Bat dau vao tro choi (reset + khoi tao)
-    void nextLevel();                        // Tang level, tao lai xe/thu kho hon
+	void resetGame();
+	void startGame();
+	void nextLevel();
 
-    void saveGame(const std::string& filename); // Luu du lieu tro choi
-    bool loadGame(const std::string& filename); // Tai lai tro choi da luu
+	void saveGame(const std::string& filename);
+	bool loadGame(const std::string& filename);
 
-    // FIX: HANDLE duoc dinh nghia boi windows.h da include o tren
-    void pauseGame(HANDLE hThread);   // Tam dung Thread
-    void resumeGame(HANDLE hThread);  // Quay lai Thread
-    void exitGame(HANDLE hThread);    // Thoat Thread (IS_RUNNING=false)
+	void pauseGame(HANDLE hThread);
+	void resumeGame(HANDLE hThread);
+	void exitGame(HANDLE hThread);
 
-    void updatePosPeople(char key);   // Dieu khien di chuyen CPEOPLE
-    void updatePosVehicle();          // CTRUCK & CCAR di chuyen
-    void updatePosAnimal();           // CROCK & CBIRD di chuyen
-    void updateTrafficLights();       // Cap nhat den giao thong
+	void updatePosPeople(char key);
+	void updatePosVehicle();
+	void updatePosAnimal();
+	void updateTrafficLights();
 
-    // ---- Cap nhat animation sprite (goi moi frame) ----
-	void updateAnimations(float dt); // Cap nhat animation cho nguoi choi, xe, thu, goi moi frame tu main.cpp
+	// ---- Cap nhat animation sprite (goi moi frame) ----
+	void updateAnimations(float dt);
 
-    // ---- Kiem tra ----
-	bool checkCollision(); // Kiem tra va cham giua nguoi choi va xe/thu, tra ve true neu co va cham
-	bool checkFinish(); // Kiem tra nguoi choi da den vạch FINISH chua, tra ve true neu da den
+	// ---- Kiem tra ----
+	bool checkCollision();
+	bool checkFinish();
 
-    // ---- Man hinh thong bao (tich hop tu Menu.cpp) ----
-	void renderMenu(RenderWindow& window, Font& font); // Ve menu chinh khi mState = MENU
-	void renderPauseMsg(RenderWindow& window, Font& font); // Ve menu tam dung khi mState = PAUSED
-	void renderDeadMsg(RenderWindow& window, Font& font); // Ve menu chet khi mState = DEAD
-	void renderLevelUp(RenderWindow& window, Font& font); // Ve menu tang level khi mState = LEVEL_UP
-	void renderWin(RenderWindow& window, Font& font); // Ve menu chien thang khi mState = WIN
-	void renderGameOver(RenderWindow& window, Font& font); // Ve menu ket thuc khi mState = GAMEOVER
+	// ---- Man hinh thong bao & Menu ----
+	void renderMenu(RenderWindow& window, Font& font);
+	void renderSettings(RenderWindow& window, Font& font);
+	void renderLoadMenu(RenderWindow& window, Font& font);
+	void renderSaveMenu(RenderWindow& window, Font& font);
+	void renderPauseMsg(RenderWindow& window, Font& font);
+	void renderDeadMsg(RenderWindow& window, Font& font);
+	void renderLevelUp(RenderWindow& window, Font& font);
+	void renderWin(RenderWindow& window, Font& font);
+	void renderGameOver(RenderWindow& window, Font& font);
+	void renderDebugMenu(RenderWindow& window, Font& font);
 
-    // ---- Getter trang thai ----
-	int       getLevel() const { return mLevel; } // Tra ve level hien tai
-	int       getScore() const { return mScore; } // Tra ve diem hien tai
-	int       getLives() const { return mLives; } // Tra ve so mang hien tai
-	GameState getState() const { return mState; } // Tra ve trang thai hien tai cua game
-	void      setState(GameState s); // Dat trang thai va dong bo am thanh gameplay
+	// ---- Menu & Settings Navigation ----
+	int  getMenuOption() const { return mMenuOption; }
+	void setMenuOption(int opt) { mMenuOption = (opt + 4) % 4; }
+	void menuUp();
+	void menuDown();
 
-    // ---- Them cho main.cpp goi Init() truoc startGame() ----
-	void Init(); // Khoi tao CGAME, load anh, khoi tao lane, goi sau khi new CGAME trong main.cpp, truoc khi startGame() de chuan bi du lieu cho tro choi
+	int  getSettingsOption() const { return mSettingsOption; }
+	void settingsUp();
+	void settingsDown();
+	void settingsLeft();
+	void settingsRight();
+	void settingsSelect();
+
+	// ---- Debug Menu & God Mode Controls ----
+	bool isGodMode() const { std::lock_guard<std::recursive_mutex> lock(mGameMutex); return mGodMode; }
+	void setGodMode(bool enable) { std::lock_guard<std::recursive_mutex> lock(mGameMutex); mGodMode = enable; }
+	void toggleGodMode() { std::lock_guard<std::recursive_mutex> lock(mGameMutex); mGodMode = !mGodMode; }
+
+	bool isDebugMenuOpen() const { std::lock_guard<std::recursive_mutex> lock(mGameMutex); return mDebugMenuOpen; }
+	void setDebugMenuOpen(bool open) { std::lock_guard<std::recursive_mutex> lock(mGameMutex); mDebugMenuOpen = open; }
+	void toggleDebugMenu() { std::lock_guard<std::recursive_mutex> lock(mGameMutex); mDebugMenuOpen = !mDebugMenuOpen; }
+
+	int  getDebugMenuOption() const { return mDebugMenuOption; }
+	void setDebugMenuOption(int opt) { mDebugMenuOption = (opt + 6) % 6; }
+	void debugMenuUp();
+	void debugMenuDown();
+	void debugMenuSelect();
+
+	void addLife() { std::lock_guard<std::recursive_mutex> lock(mGameMutex); mLives++; }
+	void addScore(int delta) { std::lock_guard<std::recursive_mutex> lock(mGameMutex); mScore += delta; }
+	void jumpLevel(int delta);
+	void teleportFinish();
+
+	// ---- 4 Save Slots Management ----
+	int  getSelectedSlot() const { return mSelectedSlot; }
+	void setSelectedSlot(int s) { mSelectedSlot = (s % 4 + 4) % 4; }
+	void slotUp();
+	void slotDown();
+	SaveSlotInfo getSlotInfo(int slotIndex) const;
+	bool saveGameSlot(int slotIndex);
+	bool loadGameSlot(int slotIndex);
+
+	// ---- Getter / Setter trang thai (Thread-safe) ----
+	int       getLevel() const { std::lock_guard<std::recursive_mutex> lock(mGameMutex); return mLevel; }
+	int       getScore() const { std::lock_guard<std::recursive_mutex> lock(mGameMutex); return mScore; }
+	int       getLives() const { std::lock_guard<std::recursive_mutex> lock(mGameMutex); return mLives; }
+	int       getStartY() const { std::lock_guard<std::recursive_mutex> lock(mGameMutex); return mStartY; }
+	int       getFinishY() const { std::lock_guard<std::recursive_mutex> lock(mGameMutex); return mFinishY; }
+	float     getCameraY() const { std::lock_guard<std::recursive_mutex> lock(mGameMutex); return mCameraY; }
+	GameState getState() const { std::lock_guard<std::recursive_mutex> lock(mGameMutex); return mState; }
+	void      setState(GameState s);
+
+	// ---- Sound & Music Controls ----
+	bool isMusicEnabled() const { return mMusicEnabled; }
+	bool isSfxEnabled() const { return mSfxEnabled; }
+	float getMusicVolume() const { return mMusicVolume; }
+	float getSfxVolume() const { return mSfxVolume; }
+
+	void setMusicEnabled(bool enabled);
+	void setSfxEnabled(bool enabled);
+	void setMusicVolume(float vol);
+	void setSfxVolume(float vol);
+
+	void toggleMusic();
+	void toggleSfx();
+	void changeMusicVolume(float delta);
+	void changeSfxVolume(float delta);
+
+	// Compatibility helpers
+	bool isSoundEnabled() const { return mMusicEnabled || mSfxEnabled; }
+	void setSoundEnabled(bool enabled);
+	void toggleSound();
+
+	void playDieSound();
+	void playGameOverSound();
+	void playLevelWinSound();
+	void playWinSound();
+	void playMenuSound();
+	void playErrorSound();
+
+	// ---- Init CGAME ----
+	void Init();
 };
 
 #endif

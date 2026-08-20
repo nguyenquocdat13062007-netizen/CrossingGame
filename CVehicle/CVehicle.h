@@ -17,7 +17,8 @@ using namespace sf;
 class CVEHICLE {
 protected:
 	int    mX, mY; // Tọa độ hiện tại của xe trên đường (mX: cột, mY: hàng)
-	int    mSpeed; // Số ký tự xe di chuyển mỗi lần gọi Move()
+	int    mSpeed; // Số tick giữa mỗi lần di chuyển (1 = mỗi tick, 2 = mỗi 2 tick...)
+	int    mMoveCounter; // Bộ đếm tick để điều tốc di chuyển
 	int    mDirection;   // 1 = di sang phải, -1 = di sang trái
 	int    mWidth; // Chiều rộng xe (tính theo số ký tự)
 	Color  mColor; // Màu sắc xe (Color)
@@ -40,6 +41,7 @@ public:
 	void setX(int x) { mX = x; } // Setter cho mX, CGAME có thể dùng để đặt lại vị trí xe
 
     // Load anh sprite - goi sau khi new
+	void loadAssets(const std::vector<std::string>& files);
 	void loadAssets(const std::string& frame1, const std::string& frame2 = ""); // Gọi sau khi new, nếu load thất bại thì animation sẽ không hiển thị nhưng xe vẫn hoạt động bình thường
 	// Clear anh sprite - goi khi delete
 
@@ -86,14 +88,18 @@ public:
 
 private:
 	State mState; // Trạng thái hiện tại của đèn giao thông
-	int mLaneY; // Hàng của làn đường mà đèn điều khiển
+	int mLaneY; // Hàng của làn đường đầu tiên mà đèn điều khiển
+	int mLaneBottomY; // Hàng của làn đường cuối cùng mà đèn điều khiển
+	int mGreenDurationMs; // Thoi gian den xanh
+	int mRedDurationMs; // Thoi gian den do
+	int mElapsedMs; // Thoi gian da troi qua o trang thai hien tai
 	AnimatedSprite mGreenAnim; // light1 -> light4 khi giao thông đang chạy
 	Texture mTexStop; // Ảnh dừng giao thông
 	optional<Sprite> mStopSprite;
 	bool mStopAssetLoaded;
 
 public:
-	explicit CTRAFFICLIGHT(int laneY);
+	explicit CTRAFFICLIGHT(int topLaneY, int bottomLaneY = 0, int greenMs = 3000, int redMs = 2000, int initialPhaseMs = 0);
 
 	// Load ảnh dừng và các frame animation cho trạng thái chạy
 	bool loadAssets(const std::string& stopImg,
@@ -101,10 +107,13 @@ public:
 
 	void setState(State state);
 	void updateAnimation(float dt);
+	int  updateTimer(int dtMs); // 0 = no change, 1 = switched to RED, 2 = switched to GREEN
 
 	State getState() const { return mState; }
 	bool isRed() const { return mState == RED; }
 	int getLaneY() const { return mLaneY; }
+	int getLaneBottomY() const { return mLaneBottomY; }
+	bool controlsLane(int laneY) const { return laneY >= mLaneY && laneY <= (mLaneBottomY > 0 ? mLaneBottomY : mLaneY); }
 
 	// Vẽ đèn tại vị trí x, y tính theo ô lưới
 	void Draw(RenderWindow& window, int x, int y);

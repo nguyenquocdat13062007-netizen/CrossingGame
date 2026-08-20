@@ -1,7 +1,9 @@
+#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#endif
 
 #include "CGame.h"
 #include <SFML/Graphics.hpp>
@@ -19,6 +21,7 @@ Font* g_font = nullptr;
 
 void SubThread() {
     sf::Clock updateClock;
+
     while (IS_RUNNING) {
         if (cg.getState() != GameState::PLAYING) {
             Sleep(16);
@@ -37,29 +40,21 @@ void SubThread() {
             cg.updatePosVehicle();
             cg.updatePosAnimal();
 
-            if (cg.getPeople().isAlive()) {
-                CVEHICLE** vehicles = cg.getVehicle();
-                CANIMAL** animals = cg.getAnimal();
-                bool hit = false;
-
-                for (int i = 0; i < MAX_TRUCKS + MAX_CARS && !hit; i++)
-                    if (vehicles[i]) hit = cg.getPeople().isImpact(vehicles[i]);
-                for (int i = 0; i < MAX_DINOS + MAX_BIRDS && !hit; i++)
-                    if (animals[i])  hit = cg.getPeople().isImpact(animals[i]);
-
-                if (hit) {
-                    cg.checkCollision();
+            if (cg.getPeople().isAlive() && !cg.isGodMode()) {
+                if (cg.checkCollision()) {
                     cg.setState(cg.getLives() <= 0
                         ? GameState::GAMEOVER : GameState::DEAD);
                 }
             }
 
-            if (cg.getPeople().isAlive() && cg.getPeople().isFinished()) {
+            if (cg.getPeople().isAlive()) {
                 if (cg.checkFinish()) {
-                    if (cg.getLevel() >= MAX_LEVEL)
+                    if (cg.getLevel() >= MAX_LEVEL) {
                         cg.setState(GameState::WIN);
-                    else
+                    }
+                    else {
                         cg.nextLevel();
+                    }
                 }
             }
         }
@@ -72,11 +67,12 @@ int main() {
     window.setFramerateLimit(60);
 
     Font font;
-    bool fontLoaded = font.openFromFile("/System/Library/Fonts/Supplemental/Arial.ttf") ||
+    bool fontLoaded = font.openFromFile("Assets/images/Press_Start_2P/PressStart2P-Regular.ttf") ||
+                       font.openFromFile("/System/Library/Fonts/Supplemental/Arial.ttf") ||
                        font.openFromFile("/Library/Fonts/Arial.ttf") ||
-                       font.openFromFile("C:/Windows/Fonts/arial.ttf");
+                       font.openFromFile("C:/Windows/Fonts/arial.ttf") ||
+                       font.openFromFile("C:/Windows/Fonts/Arial.ttf");
     if (!fontLoaded) {
-        // Tiep tuc ma khong return -1 neu khong tim thay font de tranh crash ngay lap tuc
         std::cout << "Warning: Could not load font file." << std::endl;
     }
 
@@ -108,7 +104,7 @@ int main() {
         keyHandledThisFrame = true;
         holdDelayClock.restart();
         holdRepeatClock.restart();
-        };
+    };
 
     // ================================================================
     // VONG LAP CHINH
@@ -129,47 +125,281 @@ int main() {
             const auto* key = event->getIf<Event::KeyPressed>();
             if (!key) continue;
 
+            // ========================================================
+            // GLOBAL DEBUG CONSOLE TOGGLE (` key)
+            // ========================================================
+            if (key->code == Keyboard::Key::Grave) {
+                cg.toggleDebugMenu();
+                cg.playMenuSound();
+                continue;
+            }
+
+            // Neu Debug Menu dang mo, dieu huong menu debug
+            if (cg.isDebugMenuOpen()) {
+                if (key->code == Keyboard::Key::Up || key->code == Keyboard::Key::W) {
+                    cg.debugMenuUp();
+                }
+                else if (key->code == Keyboard::Key::Down || key->code == Keyboard::Key::S) {
+                    cg.debugMenuDown();
+                }
+                else if (key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space) {
+                    cg.debugMenuSelect();
+                }
+                else if (key->code == Keyboard::Key::Num1 || key->code == Keyboard::Key::Numpad1) {
+                    cg.toggleGodMode();
+                    cg.playMenuSound();
+                }
+                else if (key->code == Keyboard::Key::Num2 || key->code == Keyboard::Key::Numpad2) {
+                    cg.jumpLevel(1);
+                }
+                else if (key->code == Keyboard::Key::Num3 || key->code == Keyboard::Key::Numpad3) {
+                    cg.jumpLevel(-1);
+                }
+                else if (key->code == Keyboard::Key::Num4 || key->code == Keyboard::Key::Numpad4) {
+                    cg.addLife();
+                    cg.playMenuSound();
+                }
+                else if (key->code == Keyboard::Key::Num5 || key->code == Keyboard::Key::Numpad5) {
+                    cg.teleportFinish();
+                }
+                else if (key->code == Keyboard::Key::Num6 || key->code == Keyboard::Key::Numpad6 || key->code == Keyboard::Key::Escape) {
+                    cg.setDebugMenuOpen(false);
+                    cg.playMenuSound();
+                }
+                continue;
+            }
+
             // MENU
             if (cg.getState() == GameState::MENU) {
-                if (key->code == Keyboard::Key::Num1) { cg.startGame(); holdDelayClock.restart(); holdRepeatClock.restart(); }
-                else if (key->code == Keyboard::Key::Num2) { if (cg.loadGame("save.crossgame")) cg.setState(GameState::PLAYING); holdDelayClock.restart(); holdRepeatClock.restart(); }
-                else if (key->code == Keyboard::Key::Num4) { cg.exitGame((HANDLE)t1.native_handle()); }
+                if (key->code == Keyboard::Key::Up || key->code == Keyboard::Key::W) {
+                    cg.menuUp();
+                }
+                else if (key->code == Keyboard::Key::Down || key->code == Keyboard::Key::S) {
+                    cg.menuDown();
+                }
+                else if (key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space) {
+                    cg.playMenuSound();
+                    int opt = cg.getMenuOption();
+                    if (opt == 0) {
+                        cg.startGame();
+                        holdDelayClock.restart();
+                        holdRepeatClock.restart();
+                    }
+                    else if (opt == 1) {
+                        cg.setState(GameState::LOAD_GAME);
+                    }
+                    else if (opt == 2) {
+                        cg.setState(GameState::SETTINGS);
+                    }
+                    else if (opt == 3) {
+                        cg.exitGame((HANDLE)t1.native_handle());
+                    }
+                }
+                else if (key->code == Keyboard::Key::Num1 || key->code == Keyboard::Key::Numpad1) {
+                    cg.setMenuOption(0);
+                    cg.playMenuSound();
+                    cg.startGame();
+                    holdDelayClock.restart();
+                    holdRepeatClock.restart();
+                }
+                else if (key->code == Keyboard::Key::Num2 || key->code == Keyboard::Key::Numpad2) {
+                    cg.setMenuOption(1);
+                    cg.playMenuSound();
+                    cg.setState(GameState::LOAD_GAME);
+                }
+                else if (key->code == Keyboard::Key::Num3 || key->code == Keyboard::Key::Numpad3) {
+                    cg.setMenuOption(2);
+                    cg.playMenuSound();
+                    cg.setState(GameState::SETTINGS);
+                }
+                else if (key->code == Keyboard::Key::Num4 || key->code == Keyboard::Key::Numpad4 || key->code == Keyboard::Key::Escape) {
+                    cg.exitGame((HANDLE)t1.native_handle());
+                }
+            }
+
+            // LOAD_GAME
+            else if (cg.getState() == GameState::LOAD_GAME) {
+                if (key->code == Keyboard::Key::Up || key->code == Keyboard::Key::W) {
+                    cg.slotUp();
+                }
+                else if (key->code == Keyboard::Key::Down || key->code == Keyboard::Key::S) {
+                    cg.slotDown();
+                }
+                else if (key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space) {
+                    if (cg.loadGameSlot(cg.getSelectedSlot())) {
+                        cg.setState(GameState::PLAYING);
+                        holdDelayClock.restart();
+                        holdRepeatClock.restart();
+                    }
+                }
+                else if (key->code == Keyboard::Key::Num1 || key->code == Keyboard::Key::Numpad1) {
+                    cg.setSelectedSlot(0);
+                    if (cg.loadGameSlot(0)) { cg.setState(GameState::PLAYING); holdDelayClock.restart(); holdRepeatClock.restart(); }
+                }
+                else if (key->code == Keyboard::Key::Num2 || key->code == Keyboard::Key::Numpad2) {
+                    cg.setSelectedSlot(1);
+                    if (cg.loadGameSlot(1)) { cg.setState(GameState::PLAYING); holdDelayClock.restart(); holdRepeatClock.restart(); }
+                }
+                else if (key->code == Keyboard::Key::Num3 || key->code == Keyboard::Key::Numpad3) {
+                    cg.setSelectedSlot(2);
+                    if (cg.loadGameSlot(2)) { cg.setState(GameState::PLAYING); holdDelayClock.restart(); holdRepeatClock.restart(); }
+                }
+                else if (key->code == Keyboard::Key::Num4 || key->code == Keyboard::Key::Numpad4) {
+                    cg.setSelectedSlot(3);
+                    if (cg.loadGameSlot(3)) { cg.setState(GameState::PLAYING); holdDelayClock.restart(); holdRepeatClock.restart(); }
+                }
+                else if (key->code == Keyboard::Key::Escape) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::MENU);
+                }
+            }
+
+            // SAVE_GAME
+            else if (cg.getState() == GameState::SAVE_GAME) {
+                if (key->code == Keyboard::Key::Up || key->code == Keyboard::Key::W) {
+                    cg.slotUp();
+                }
+                else if (key->code == Keyboard::Key::Down || key->code == Keyboard::Key::S) {
+                    cg.slotDown();
+                }
+                else if (key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space) {
+                    cg.saveGameSlot(cg.getSelectedSlot());
+                    cg.setState(GameState::PLAYING);
+                }
+                else if (key->code == Keyboard::Key::Num1 || key->code == Keyboard::Key::Numpad1) {
+                    cg.setSelectedSlot(0);
+                    cg.saveGameSlot(0);
+                    cg.setState(GameState::PLAYING);
+                }
+                else if (key->code == Keyboard::Key::Num2 || key->code == Keyboard::Key::Numpad2) {
+                    cg.setSelectedSlot(1);
+                    cg.saveGameSlot(1);
+                    cg.setState(GameState::PLAYING);
+                }
+                else if (key->code == Keyboard::Key::Num3 || key->code == Keyboard::Key::Numpad3) {
+                    cg.setSelectedSlot(2);
+                    cg.saveGameSlot(2);
+                    cg.setState(GameState::PLAYING);
+                }
+                else if (key->code == Keyboard::Key::Num4 || key->code == Keyboard::Key::Numpad4) {
+                    cg.setSelectedSlot(3);
+                    cg.saveGameSlot(3);
+                    cg.setState(GameState::PLAYING);
+                }
+                else if (key->code == Keyboard::Key::Escape) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::PLAYING);
+                }
+            }
+
+            // SETTINGS
+            else if (cg.getState() == GameState::SETTINGS) {
+                if (key->code == Keyboard::Key::Up || key->code == Keyboard::Key::W) {
+                    cg.settingsUp();
+                }
+                else if (key->code == Keyboard::Key::Down || key->code == Keyboard::Key::S) {
+                    cg.settingsDown();
+                }
+                else if (key->code == Keyboard::Key::Left || key->code == Keyboard::Key::A) {
+                    cg.settingsLeft();
+                }
+                else if (key->code == Keyboard::Key::Right || key->code == Keyboard::Key::D) {
+                    cg.settingsRight();
+                }
+                else if (key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space) {
+                    cg.settingsSelect();
+                }
+                else if (key->code == Keyboard::Key::M) {
+                    cg.toggleMusic();
+                }
+                else if (key->code == Keyboard::Key::Escape || key->code == Keyboard::Key::Num3 || key->code == Keyboard::Key::Numpad3 || key->code == Keyboard::Key::Num4) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::MENU);
+                }
             }
 
             // PLAYING
             else if (cg.getState() == GameState::PLAYING) {
-                if (key->code == Keyboard::Key::P) { cg.pauseGame((HANDLE)t1.native_handle()); }
-                else if (key->code == Keyboard::Key::L) { cg.saveGame("save.crossgame"); }
-                else if (key->code == Keyboard::Key::T) { cg.loadGame("save.crossgame"); }
-                else if (key->code == Keyboard::Key::Escape) { cg.setState(GameState::MENU); }
-                // WASD: phan hoi ngay lan nhan dau - dung handleMovement()
-                else if (key->code == Keyboard::Key::W) handleMovement('W');
-                else if (key->code == Keyboard::Key::S) handleMovement('S');
-                else if (key->code == Keyboard::Key::A) handleMovement('A');
-                else if (key->code == Keyboard::Key::D) handleMovement('D');
+                if (key->code == Keyboard::Key::P) {
+                    cg.playMenuSound();
+                    cg.pauseGame((HANDLE)t1.native_handle());
+                }
+                else if (key->code == Keyboard::Key::L) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::SAVE_GAME);
+                }
+                else if (key->code == Keyboard::Key::T) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::LOAD_GAME);
+                }
+                else if (key->code == Keyboard::Key::M) {
+                    cg.toggleMusic();
+                }
+                else if (key->code == Keyboard::Key::Escape) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::MENU);
+                }
+                // WASD: phan hoi ngay lan nhan dau
+                else if (key->code == Keyboard::Key::W || key->code == Keyboard::Key::Up) handleMovement('W');
+                else if (key->code == Keyboard::Key::S || key->code == Keyboard::Key::Down) handleMovement('S');
+                else if (key->code == Keyboard::Key::A || key->code == Keyboard::Key::Left) handleMovement('A');
+                else if (key->code == Keyboard::Key::D || key->code == Keyboard::Key::Right) handleMovement('D');
             }
 
             // PAUSED
             else if (cg.getState() == GameState::PAUSED) {
-                if (key->code == Keyboard::Key::P) { cg.resumeGame((HANDLE)t1.native_handle()); holdDelayClock.restart(); holdRepeatClock.restart(); }
-                else if (key->code == Keyboard::Key::Escape) { cg.setState(GameState::MENU); }
+                if (key->code == Keyboard::Key::P) {
+                    cg.playMenuSound();
+                    cg.resumeGame((HANDLE)t1.native_handle());
+                    holdDelayClock.restart();
+                    holdRepeatClock.restart();
+                }
+                else if (key->code == Keyboard::Key::M) {
+                    cg.toggleSound();
+                }
+                else if (key->code == Keyboard::Key::Escape) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::MENU);
+                }
             }
 
             // DEAD
             else if (cg.getState() == GameState::DEAD) {
-                if (key->code == Keyboard::Key::Y) {
+                if (key->code == Keyboard::Key::Y || key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space) {
+                    cg.playMenuSound();
                     cg.getPeople().Reset();
                     cg.setState(GameState::PLAYING);
                     MOVING = ' '; lastKey = ' '; holdStarted = false;
                     holdDelayClock.restart(); holdRepeatClock.restart();
                 }
-                else if (key->code == Keyboard::Key::Escape) { cg.setState(GameState::MENU); }
+                else if (key->code == Keyboard::Key::Escape) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::MENU);
+                }
             }
 
-            // GAMEOVER / WIN
-            else if (cg.getState() == GameState::GAMEOVER ||
-                cg.getState() == GameState::WIN) {
-                cg.setState(GameState::MENU);
+            // WIN
+            else if (cg.getState() == GameState::WIN) {
+                if (key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space || key->code == Keyboard::Key::Escape || key->code == Keyboard::Key::Y) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::MENU);
+                }
+            }
+
+            // GAMEOVER
+            else if (cg.getState() == GameState::GAMEOVER) {
+                if (key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space || key->code == Keyboard::Key::Escape || key->code == Keyboard::Key::Y) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::MENU);
+                }
+            }
+
+            // LEVEL_UP
+            else if (cg.getState() == GameState::LEVEL_UP) {
+                if (key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::PLAYING);
+                }
             }
         }
 
@@ -177,30 +407,26 @@ int main() {
         // GIU PHIM (isKeyPressed) - dung handleMovement() chung
         // 2 giai doan: delay 350ms -> lap moi 150ms
         // ============================================================
-        if (cg.getState() == GameState::PLAYING && !keyHandledThisFrame) {
-            // Xac dinh phim dang giu, uu tien lastKey
+        if (cg.getState() == GameState::PLAYING && !keyHandledThisFrame && !cg.isDebugMenuOpen()) {
             char curKey = ' ';
-            if (lastKey == 'W' && Keyboard::isKeyPressed(Keyboard::Key::W)) curKey = 'W';
-            else if (lastKey == 'S' && Keyboard::isKeyPressed(Keyboard::Key::S)) curKey = 'S';
-            else if (lastKey == 'A' && Keyboard::isKeyPressed(Keyboard::Key::A)) curKey = 'A';
-            else if (lastKey == 'D' && Keyboard::isKeyPressed(Keyboard::Key::D)) curKey = 'D';
-            else if (Keyboard::isKeyPressed(Keyboard::Key::W)) curKey = 'W';
-            else if (Keyboard::isKeyPressed(Keyboard::Key::S)) curKey = 'S';
-            else if (Keyboard::isKeyPressed(Keyboard::Key::A)) curKey = 'A';
-            else if (Keyboard::isKeyPressed(Keyboard::Key::D)) curKey = 'D';
+            if (lastKey == 'W' && (Keyboard::isKeyPressed(Keyboard::Key::W) || Keyboard::isKeyPressed(Keyboard::Key::Up))) curKey = 'W';
+            else if (lastKey == 'S' && (Keyboard::isKeyPressed(Keyboard::Key::S) || Keyboard::isKeyPressed(Keyboard::Key::Down))) curKey = 'S';
+            else if (lastKey == 'A' && (Keyboard::isKeyPressed(Keyboard::Key::A) || Keyboard::isKeyPressed(Keyboard::Key::Left))) curKey = 'A';
+            else if (lastKey == 'D' && (Keyboard::isKeyPressed(Keyboard::Key::D) || Keyboard::isKeyPressed(Keyboard::Key::Right))) curKey = 'D';
+            else if (Keyboard::isKeyPressed(Keyboard::Key::W) || Keyboard::isKeyPressed(Keyboard::Key::Up)) curKey = 'W';
+            else if (Keyboard::isKeyPressed(Keyboard::Key::S) || Keyboard::isKeyPressed(Keyboard::Key::Down)) curKey = 'S';
+            else if (Keyboard::isKeyPressed(Keyboard::Key::A) || Keyboard::isKeyPressed(Keyboard::Key::Left)) curKey = 'A';
+            else if (Keyboard::isKeyPressed(Keyboard::Key::D) || Keyboard::isKeyPressed(Keyboard::Key::Right)) curKey = 'D';
 
             if (curKey != ' ') {
-                // Doi phim -> reset qua handleMovement()
                 if (curKey != lastKey) handleMovement(curKey);
 
-                // Giai doan 1: cho du delay moi bat dau giu
                 if (!holdStarted &&
                     holdDelayClock.getElapsedTime().asSeconds() >= MOVE_HOLD_DELAY) {
                     holdStarted = true;
                     holdRepeatClock.restart();
                 }
 
-                // Giai doan 2: dang giu -> di chuyen moi MOVE_HOLD_INTERVAL
                 if (holdStarted &&
                     holdRepeatClock.getElapsedTime().asSeconds() >= MOVE_HOLD_INTERVAL) {
                     MOVING = curKey;
@@ -208,7 +434,6 @@ int main() {
                 }
             }
             else {
-                // Tha phim -> reset
                 if (lastKey != ' ') {
                     lastKey = ' ';
                     holdStarted = false;
@@ -230,36 +455,59 @@ int main() {
         // ============================================================
         // RENDER
         // ============================================================
+        window.clear(COLOR_BG);
+
         switch (cg.getState()) {
         case GameState::MENU:
+            cg.drawGame(window, font);
             cg.renderMenu(window, font);
             break;
-        case GameState::PLAYING:
-            window.clear(COLOR_BG);
+        case GameState::SETTINGS:
             cg.drawGame(window, font);
-            window.display();
+            cg.renderSettings(window, font);
+            break;
+        case GameState::LOAD_GAME:
+            cg.renderLoadMenu(window, font);
+            break;
+        case GameState::SAVE_GAME:
+            cg.drawGame(window, font);
+            cg.renderSaveMenu(window, font);
+            break;
+        case GameState::PLAYING:
+            cg.drawGame(window, font);
             break;
         case GameState::PAUSED:
-            window.clear(COLOR_BG);
             cg.drawGame(window, font);
             cg.renderPauseMsg(window, font);
-            window.display();
             break;
         case GameState::DEAD:
-            window.clear(COLOR_BG);
             cg.drawGame(window, font);
             cg.renderDeadMsg(window, font);
-            window.display();
             break;
         case GameState::GAMEOVER:
+            cg.drawGame(window, font);
             cg.renderGameOver(window, font);
             break;
         case GameState::WIN:
+            cg.drawGame(window, font);
             cg.renderWin(window, font);
+            break;
+        case GameState::LEVEL_UP:
+            cg.drawGame(window, font);
+            cg.renderLevelUp(window, font);
             break;
         default:
             break;
         }
+
+        // ============================================================
+        // DEVELOPER DEBUG CONSOLE OVERLAY (Toggle with ` or ~)
+        // ============================================================
+        if (cg.isDebugMenuOpen()) {
+            cg.renderDebugMenu(window, font);
+        }
+
+        window.display();
     }
 
     IS_RUNNING = false;

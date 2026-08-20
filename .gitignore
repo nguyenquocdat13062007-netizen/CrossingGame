@@ -17,3 +17,12 @@ context/
 context.txt
 .idea/
 .DS_Store
+cmake-build-*/
+cmake-build-debug/
+cmake-build-release/
+build/
+bin/
+*.crossgame
+save*.crossgame
+
+
