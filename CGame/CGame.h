@@ -114,7 +114,6 @@ private:
 	Music mMusicWin;
 	Music mMusicGameOver;
 	Music mTrafficStopping;
-	Music mTrafficStart;
 
 	bool mMusicMenuLoaded;
 	bool mMusicGameLoaded;
@@ -122,7 +121,6 @@ private:
 	bool mMusicWinLoaded;
 	bool mMusicGameOverLoaded;
 	bool mTrafficStoppingLoaded;
-	bool mTrafficStartLoaded;
 
 	SoundBuffer mBufDie;
 	SoundBuffer mBufLevelWin;

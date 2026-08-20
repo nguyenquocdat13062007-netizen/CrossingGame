@@ -85,7 +85,7 @@ CGAME::CGAME()
       mMusicVolume(70.f), mSfxVolume(80.f),
       mMusicMenuLoaded(false), mMusicGameLoaded(false), mMusicCarPassingLoaded(false),
       mMusicWinLoaded(false), mMusicGameOverLoaded(false),
-      mTrafficStoppingLoaded(false), mTrafficStartLoaded(false),
+      mTrafficStoppingLoaded(false),
       mSfxDieLoaded(false),
       mSfxLevelWinLoaded(false),
       mSfxUIMenuLoaded(false), mSfxUIErrorLoaded(false),
@@ -165,9 +165,6 @@ void CGAME::initAudio() {
 	mTrafficStoppingLoaded = mTrafficStopping.openFromFile("Assets/music/Traffic-Stopping.wav");
 	if (mTrafficStoppingLoaded) mTrafficStopping.setLooping(false);
 
-	mTrafficStartLoaded = mTrafficStart.openFromFile("Assets/music/Traffic-Start.wav");
-	if (mTrafficStartLoaded) mTrafficStart.setLooping(false);
-
 	mMusicWinLoaded = mMusicWin.openFromFile("Assets/music/Win-Game.wav");
 	if (mMusicWinLoaded) mMusicWin.setLooping(false);
 
@@ -198,7 +195,6 @@ void CGAME::applyVolumes() {
 
 	float sfxVol = mSfxEnabled ? mSfxVolume : 0.f;
 	if (mTrafficStoppingLoaded) mTrafficStopping.setVolume(sfxVol * 0.85f);
-	if (mTrafficStartLoaded) mTrafficStart.setVolume(sfxVol * 0.85f);
 	if (mSfxDieLoaded && mSfxDie.has_value()) mSfxDie->setVolume(sfxVol);
 	if (mSfxLevelWinLoaded && mSfxLevelWin.has_value()) mSfxLevelWin->setVolume(sfxVol);
 	if (mSfxUIMenuLoaded && mSfxUIMenu.has_value()) mSfxUIMenu->setVolume(sfxVol);
@@ -1126,17 +1122,8 @@ void CGAME::updateTrafficLights() {
 		if (mTrafficStoppingLoaded && mTrafficStopping.getStatus() == SoundSource::Status::Playing) {
 			mTrafficStopping.stop();
 		}
-		// Neu vua chuyen tu do sang xanh, phat am thanh xuat phat / chay tiep
-		if (switchEvent == 2 && mSfxEnabled && mState == GameState::PLAYING && mTrafficStartLoaded) {
-			if (mTrafficStart.getStatus() != SoundSource::Status::Playing) {
-				mTrafficStart.play();
-			}
-		}
 	}
 	else if (mTrafficState == CTRAFFICLIGHT::RED) {
-		if (mTrafficStartLoaded && mTrafficStart.getStatus() == SoundSource::Status::Playing) {
-			mTrafficStart.stop();
-		}
 		if (mSfxEnabled && mState == GameState::PLAYING && mTrafficStoppingLoaded) {
 			if (mTrafficStopping.getStatus() != SoundSource::Status::Playing) {
 				mTrafficStopping.play();
@@ -1150,9 +1137,6 @@ void CGAME::updateTrafficLights() {
 void CGAME::stopTrafficAudio() {
 	if (mTrafficStoppingLoaded && mTrafficStopping.getStatus() == SoundSource::Status::Playing) {
 		mTrafficStopping.stop();
-	}
-	if (mTrafficStartLoaded && mTrafficStart.getStatus() == SoundSource::Status::Playing) {
-		mTrafficStart.stop();
 	}
 }
 
@@ -1168,9 +1152,6 @@ void CGAME::updateTrafficAudio() {
 		}
 	}
 	else if (mTrafficState == CTRAFFICLIGHT::RED) {
-		if (mTrafficStartLoaded && mTrafficStart.getStatus() == SoundSource::Status::Playing) {
-			mTrafficStart.stop();
-		}
 		if (mTrafficStoppingLoaded && mTrafficStopping.getStatus() != SoundSource::Status::Playing) {
 			mTrafficStopping.play();
 		}
