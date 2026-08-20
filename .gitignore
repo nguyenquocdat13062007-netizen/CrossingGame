@@ -1,29 +1,42 @@
-.vs/
-[Db]obj/
-[Db]bin/
+# Visual Studio temporary files & caches
+/.vs/
 *.user
 *.suo
-/Main/CrossingGame.sln
-/Main/CrossingGame.vcxproj
-/Main/CrossingGame.vcxproj.filters
-/CrossingGame.sln
-/CrossingGame.vcxproj
-/CrossingGame.vcxproj.filters
-/CrossingGame/x64/Debug
-/include
-/lib
-/x64/Debug
+*.db
+*.opendb
+
+# Root build output directories
+/bin/
+/obj/
+/x64/
+/x86/
+/Debug/
+/Release/
+/build/
+/out/
+/cmake-build-*/
+
+# Compiler intermediate files & debug symbols
+*.obj
+*.o
+*.pdb
+*.idb
+*.tlog
+*.log
+*.ilk
+*.manifest
+*.res
+*.lastbuildstate
+
+# SFML doc & examples (not needed in repo to keep size lean)
+SFML-3.1.0/doc/
+SFML-3.1.0/examples/
+SFML-3.1.0/lib/*.pdb
+
+# Save files & temp files
+*.crossgame
+save*.crossgame
 context/
 context.txt
 .idea/
 .DS_Store
-cmake-build-*/
-cmake-build-debug/
-cmake-build-release/
-build/
-bin/
-*.crossgame
-save*.crossgame
-CMakeLists.txt
-
-

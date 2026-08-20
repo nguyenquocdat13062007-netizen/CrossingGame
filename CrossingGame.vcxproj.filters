@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\CAnimal">
+      <UniqueIdentifier>{a1b2c3d4-0001-4000-8000-000000000001}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\CGame">
+      <UniqueIdentifier>{a1b2c3d4-0002-4000-8000-000000000002}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\CPeople">
+      <UniqueIdentifier>{a1b2c3d4-0003-4000-8000-000000000003}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\CVehicle">
+      <UniqueIdentifier>{a1b2c3d4-0004-4000-8000-000000000004}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Main">
+      <UniqueIdentifier>{a1b2c3d4-0005-4000-8000-000000000005}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\CAnimal">
+      <UniqueIdentifier>{b1b2c3d4-0001-4000-8000-000000000001}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\CGame">
+      <UniqueIdentifier>{b1b2c3d4-0002-4000-8000-000000000002}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\CPeople">
+      <UniqueIdentifier>{b1b2c3d4-0003-4000-8000-000000000003}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\CVehicle">
+      <UniqueIdentifier>{b1b2c3d4-0004-4000-8000-000000000004}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Utils">
+      <UniqueIdentifier>{b1b2c3d4-0005-4000-8000-000000000005}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CAnimal\CAnimal.cpp">
+      <Filter>Source Files\CAnimal</Filter>
+    </ClCompile>
+    <ClCompile Include="CGame\CGame.cpp">
+      <Filter>Source Files\CGame</Filter>
+    </ClCompile>
+    <ClCompile Include="CPeople\CPeople.cpp">
+      <Filter>Source Files\CPeople</Filter>
+    </ClCompile>
+    <ClCompile Include="CVehicle\CVehicle.cpp">
+      <Filter>Source Files\CVehicle</Filter>
+    </ClCompile>
+    <ClCompile Include="Main\MainProgram.cpp">
+      <Filter>Source Files\Main</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AnimatedSprite.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CAnimal\CAnimal.h">
+      <Filter>Header Files\CAnimal</Filter>
+    </ClInclude>
+    <ClInclude Include="CGame\CGame.h">
+      <Filter>Header Files\CGame</Filter>
+    </ClInclude>
+    <ClInclude Include="CPeople\CPeople.h">
+      <Filter>Header Files\CPeople</Filter>
+    </ClInclude>
+    <ClInclude Include="CVehicle\CVehicle.h">
+      <Filter>Header Files\CVehicle</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Utils.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
