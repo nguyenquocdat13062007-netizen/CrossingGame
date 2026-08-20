@@ -24,5 +24,6 @@ build/
 bin/
 *.crossgame
 save*.crossgame
+CMakeLists.txt
 
 
