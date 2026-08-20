@@ -119,6 +119,7 @@ int main() {
         while (const std::optional<Event> event = window.pollEvent()) {
             if (event->is<Event::Closed>()) {
                 cg.exitGame((HANDLE)t1.native_handle());
+                window.close();
                 break;
             }
 
@@ -193,6 +194,7 @@ int main() {
                     }
                     else if (opt == 3) {
                         cg.exitGame((HANDLE)t1.native_handle());
+                        window.close();
                     }
                 }
                 else if (key->code == Keyboard::Key::Num1 || key->code == Keyboard::Key::Numpad1) {
@@ -214,6 +216,7 @@ int main() {
                 }
                 else if (key->code == Keyboard::Key::Num4 || key->code == Keyboard::Key::Numpad4 || key->code == Keyboard::Key::Escape) {
                     cg.exitGame((HANDLE)t1.native_handle());
+                    window.close();
                 }
             }
 
@@ -511,6 +514,8 @@ int main() {
     }
 
     IS_RUNNING = false;
-    t1.join();
+    if (t1.joinable()) {
+        t1.join();
+    }
     return 0;
 }

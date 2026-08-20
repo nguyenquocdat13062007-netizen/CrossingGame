@@ -192,9 +192,9 @@ public:
 	void saveGame(const std::string& filename);
 	bool loadGame(const std::string& filename);
 
-	void pauseGame(HANDLE hThread);
-	void resumeGame(HANDLE hThread);
-	void exitGame(HANDLE hThread);
+	void pauseGame(HANDLE hThread = nullptr);
+	void resumeGame(HANDLE hThread = nullptr);
+	void exitGame(HANDLE hThread = nullptr);
 
 	void updatePosPeople(char key);
 	void updatePosVehicle();

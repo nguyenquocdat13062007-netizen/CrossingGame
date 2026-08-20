@@ -995,18 +995,19 @@ void CGAME::nextLevel() {
 // PAUSE / RESUME / EXIT THREAD
 // ================================================================
 void CGAME::pauseGame(HANDLE hThread) {
-	SuspendThread(hThread);
+	(void)hThread;
 	setState(GameState::PAUSED);
 }
 
 void CGAME::resumeGame(HANDLE hThread) {
+	(void)hThread;
 	if (mState == GameState::PAUSED) {
 		setState(GameState::PLAYING);
-		ResumeThread(hThread);
 	}
 }
 
 void CGAME::exitGame(HANDLE hThread) {
+	(void)hThread;
 	IS_RUNNING = false;
 	stopTrafficAudio();
 	if (mMusicMenuLoaded) mMusicMenu.stop();
@@ -1015,7 +1016,6 @@ void CGAME::exitGame(HANDLE hThread) {
 	if (mMusicWinLoaded) mMusicWin.stop();
 	if (mMusicGameOverLoaded) mMusicGameOver.stop();
 	CBIRD::stopSound();
-	SuspendThread(hThread);
 }
 
 // ================================================================
