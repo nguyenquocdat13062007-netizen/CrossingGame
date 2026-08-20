@@ -85,7 +85,7 @@ CGAME::CGAME()
       mMusicVolume(70.f), mSfxVolume(80.f),
       mMusicMenuLoaded(false), mMusicGameLoaded(false), mMusicCarPassingLoaded(false),
       mMusicWinLoaded(false), mMusicGameOverLoaded(false),
-      mTrafficStoppingLoaded(false),
+      mTrafficStoppingLoaded(false), mTrafficStartLoaded(false),
       mSfxDieLoaded(false),
       mSfxLevelWinLoaded(false),
       mSfxUIMenuLoaded(false), mSfxUIErrorLoaded(false),
@@ -198,6 +198,7 @@ void CGAME::applyVolumes() {
 
 	float sfxVol = mSfxEnabled ? mSfxVolume : 0.f;
 	if (mTrafficStoppingLoaded) mTrafficStopping.setVolume(sfxVol * 0.85f);
+	if (mTrafficStartLoaded) mTrafficStart.setVolume(sfxVol * 0.85f);
 	if (mSfxDieLoaded && mSfxDie.has_value()) mSfxDie->setVolume(sfxVol);
 	if (mSfxLevelWinLoaded && mSfxLevelWin.has_value()) mSfxLevelWin->setVolume(sfxVol);
 	if (mSfxUIMenuLoaded && mSfxUIMenu.has_value()) mSfxUIMenu->setVolume(sfxVol);
@@ -1061,12 +1062,20 @@ void CGAME::updateTrafficLights() {
 	int dtMs = (int)mTrafficClock.restart().asMilliseconds();
 	if (dtMs <= 0 || dtMs > 1000) dtMs = 16;
 
-	bool anyRed = false;
+	int playerY = cn.getY();
+	CTRAFFICLIGHT* relevantLight = nullptr;
+	int bestDist = 99999;
+	int switchEvent = 0; // 1 = turned RED, 2 = turned GREEN
+
 	for (int i = 0; i < mNumLights; i++) {
 		if (mLights[i] != nullptr) {
-			mLights[i]->updateTimer(dtMs);
-			if (mLights[i]->isRed()) {
-				anyRed = true;
+			int ev = mLights[i]->updateTimer(dtMs);
+			int lightMidY = (mLights[i]->getLaneY() + mLights[i]->getLaneBottomY()) / 2;
+			int dist = std::abs(playerY - lightMidY);
+			if (dist < bestDist) {
+				bestDist = dist;
+				relevantLight = mLights[i];
+				switchEvent = ev;
 			}
 		}
 	}
@@ -1103,12 +1112,48 @@ void CGAME::updateTrafficLights() {
 		else axh[i]->Resume();
 	}
 
-	mTrafficState = anyRed ? CTRAFFICLIGHT::RED : CTRAFFICLIGHT::GREEN;
+	// Chi xet trang thai den trong pham vi tam nhin nguoi choi (~20 o luoi)
+	if (relevantLight != nullptr && bestDist <= 20) {
+		mTrafficState = relevantLight->isRed() ? CTRAFFICLIGHT::RED : CTRAFFICLIGHT::GREEN;
+	}
+	else {
+		mTrafficState = CTRAFFICLIGHT::GREEN;
+	}
+
+	// Xu ly am thanh den giao thong dong bo chinh xac voi trang thai den hien tai
+	if (mTrafficState == CTRAFFICLIGHT::GREEN) {
+		// Den xanh / dang sang: Dung ngay am thanh dung lai
+		if (mTrafficStoppingLoaded && mTrafficStopping.getStatus() == SoundSource::Status::Playing) {
+			mTrafficStopping.stop();
+		}
+		// Neu vua chuyen tu do sang xanh, phat am thanh xuat phat / chay tiep
+		if (switchEvent == 2 && mSfxEnabled && mState == GameState::PLAYING && mTrafficStartLoaded) {
+			if (mTrafficStart.getStatus() != SoundSource::Status::Playing) {
+				mTrafficStart.play();
+			}
+		}
+	}
+	else if (mTrafficState == CTRAFFICLIGHT::RED) {
+		if (mTrafficStartLoaded && mTrafficStart.getStatus() == SoundSource::Status::Playing) {
+			mTrafficStart.stop();
+		}
+		if (mSfxEnabled && mState == GameState::PLAYING && mTrafficStoppingLoaded) {
+			if (mTrafficStopping.getStatus() != SoundSource::Status::Playing) {
+				mTrafficStopping.play();
+			}
+		}
+	}
+
 	updateTrafficAudio();
 }
 
 void CGAME::stopTrafficAudio() {
-	if (mTrafficStoppingLoaded) mTrafficStopping.stop();
+	if (mTrafficStoppingLoaded && mTrafficStopping.getStatus() == SoundSource::Status::Playing) {
+		mTrafficStopping.stop();
+	}
+	if (mTrafficStartLoaded && mTrafficStart.getStatus() == SoundSource::Status::Playing) {
+		mTrafficStart.stop();
+	}
 }
 
 void CGAME::updateTrafficAudio() {
@@ -1117,13 +1162,18 @@ void CGAME::updateTrafficAudio() {
 		return;
 	}
 
-	if (mTrafficState == CTRAFFICLIGHT::RED) {
+	if (mTrafficState == CTRAFFICLIGHT::GREEN) {
+		if (mTrafficStoppingLoaded && mTrafficStopping.getStatus() == SoundSource::Status::Playing) {
+			mTrafficStopping.stop();
+		}
+	}
+	else if (mTrafficState == CTRAFFICLIGHT::RED) {
+		if (mTrafficStartLoaded && mTrafficStart.getStatus() == SoundSource::Status::Playing) {
+			mTrafficStart.stop();
+		}
 		if (mTrafficStoppingLoaded && mTrafficStopping.getStatus() != SoundSource::Status::Playing) {
 			mTrafficStopping.play();
 		}
-	}
-	else {
-		stopTrafficAudio();
 	}
 }
 
