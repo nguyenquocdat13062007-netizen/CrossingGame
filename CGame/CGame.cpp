@@ -1808,10 +1808,10 @@ void CGAME::renderSettings(RenderWindow& window, Font& font) {
 		window.draw(darkBg);
 	}
 
-	// 2. High-Contrast Popup Panel Frame with Double Borders & Image Background
+	// 2. High-Contrast Popup Panel Frame with Black Border & Image Background
 	float pw = 680.f;
 	float ph = 480.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(0, 220, 255), Color(0, 160, 255, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr);
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr);
 
 	// 3. Settings Title
 	DrawTextWithShadow(window, font, "AUDIO & CONTROLS SETTINGS", 18, Color::Yellow, centerX, centerY - 190.f);
@@ -1910,7 +1910,7 @@ void CGAME::renderLoadMenu(RenderWindow& window, Font& font) {
 
 	float pw = 680.f;
 	float ph = 480.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(0, 220, 255), Color(0, 160, 255, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr);
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr);
 
 	DrawTextWithShadow(window, font, "LOAD GAME - SELECT SLOT", 18, Color::Yellow, centerX, centerY - 195.f);
 
@@ -1985,7 +1985,7 @@ void CGAME::renderSaveMenu(RenderWindow& window, Font& font) {
 
 	float pw = 680.f;
 	float ph = 480.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 215, 0), Color(255, 230, 100, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr);
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr);
 
 	DrawTextWithShadow(window, font, "SAVE GAME - CHOOSE SLOT TO OVERWRITE", 16, Color::Yellow, centerX, centerY - 195.f);
 
@@ -2039,7 +2039,7 @@ void CGAME::renderPauseMsg(RenderWindow& window, Font& font) {
 	float centerY = (float)WINDOW_HEIGHT / 2.0f;
 
 	float pw = 500.f, ph = 260.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(80, 160, 255), Color(140, 200, 255, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(12, 18, 34, 250));
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(12, 18, 34, 250));
 
 	DrawTextWithShadow(window, font, "GAME PAUSED", 24, Color(100, 190, 255), centerX, centerY - 55.f);
 	DrawTextWithShadow(window, font, "[P] Resume Game", 13, Color::Yellow, centerX, centerY + 5.f);
@@ -2053,7 +2053,7 @@ void CGAME::renderDeadMsg(RenderWindow& window, Font& font) {
 	float centerY = winH / 2.0f;
 
 	float pw = 540.f, ph = 320.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 45, 65), Color(255, 120, 120, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(25, 10, 18, 252));
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(25, 10, 18, 252));
 
 	DrawTextWithShadow(window, font, "YOU DIED!", 28, Color::Red, centerX, centerY - 80.f);
 	DrawTextWithShadow(window, font, "LIVES REMAINING: " + to_string(mLives), 14, Color::Yellow, centerX, centerY - 20.f);
@@ -2066,7 +2066,7 @@ void CGAME::renderLevelUp(RenderWindow& window, Font& font) {
 	float centerY = (float)WINDOW_HEIGHT / 2.0f;
 
 	float pw = 540.f, ph = 220.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 80, 220), Color(255, 215, 0, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(20, 14, 28, 252));
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(20, 14, 28, 252));
 
 	DrawTextWithShadow(window, font, "LEVEL COMPLETED!", 22, Color::Magenta, centerX, centerY - 25.f);
 	DrawTextWithShadow(window, font, "NEXT: LEVEL " + to_string(mLevel), 16, Color::Yellow, centerX, centerY + 30.f);
@@ -2089,9 +2089,9 @@ void CGAME::renderWin(RenderWindow& window, Font& font) {
 		}
 	}
 
-	// 2. High-Contrast Gold Double-Border Frame with Popup Panel Texture
+	// 2. High-Contrast Black Border Frame with Popup Panel Texture
 	float pw = 620.f, ph = 410.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 215, 0), Color(255, 240, 150, 100), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(18, 16, 30, 252));
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(18, 16, 30, 252));
 
 	// 3. Victory Header
 	DrawTextWithShadow(window, font, "VICTORY!", 28, Color::Yellow, centerX, centerY - 130.f);
@@ -2120,7 +2120,7 @@ void CGAME::renderGameOver(RenderWindow& window, Font& font) {
 	float centerY = winH / 2.0f;
 
 	float pw = 560.f, ph = 340.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 45, 65), Color(255, 120, 120, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(25, 10, 18, 252));
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(25, 10, 18, 252));
 
 	DrawTextWithShadow(window, font, "GAME OVER", 30, Color::Red, centerX, centerY - 90.f);
 	DrawTextWithShadow(window, font, "FINAL SCORE: " + to_string(mScore), 15, Color::White, centerX, centerY - 20.f);
@@ -2138,10 +2138,10 @@ void CGAME::renderDebugMenu(RenderWindow& window, Font& font) {
 	dimBg.setFillColor(Color(0, 0, 0, 175));
 	window.draw(dimBg);
 
-	// High-contrast Cyberpunk Debug Console Box
+	// High-contrast Black Border Console Box
 	float pw = 680.f;
 	float ph = 430.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(0, 240, 255), Color(0, 180, 255, 90), nullptr, Color(10, 15, 26, 252));
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), nullptr, Color(10, 15, 26, 252));
 
 	// Console Header
 	DrawTextWithShadow(window, font, "[ DEVELOPER DEBUG CONSOLE ]", 16, Color::Yellow, centerX, centerY - 170.f);
@@ -2206,10 +2206,10 @@ void CGAME::renderProfileManager(RenderWindow& window, Font& font) {
 	dimBg.setFillColor(Color(8, 12, 22, 235));
 	window.draw(dimBg);
 
-	// 2. High-Contrast Double-Border Popup Frame with Panel Texture Background
+	// 2. High-Contrast Black Border Popup Frame with Panel Texture Background
 	float pw = 740.f;
 	float ph = 500.f;
-	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(0, 220, 255), Color(0, 160, 255, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(12, 16, 28, 252));
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(12, 16, 28, 252));
 
 	// 3. Header
 	DrawTextWithShadow(window, font, "USER PROFILES & AVATAR MANAGER", 16, Color::Yellow, centerX, centerY - 215.f);
@@ -2277,7 +2277,7 @@ void CGAME::renderProfileManager(RenderWindow& window, Font& font) {
 		dimInput.setFillColor(Color(0, 0, 0, 160));
 		window.draw(dimInput);
 
-		DrawPopupFrame(window, centerX, centerY, 520.f, 220.f, Color(255, 215, 0), Color(255, 240, 150, 100), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(14, 18, 32, 252));
+		DrawPopupFrame(window, centerX, centerY, 520.f, 220.f, Color::Black, Color(40, 40, 45), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(14, 18, 32, 252));
 
 		DrawTextWithShadow(window, font, mIsRenamingProfile ? "RENAME PROFILE" : "CREATE NEW PROFILE", 14, Color::Yellow, centerX, centerY - 65.f);
 		DrawTextWithShadow(window, font, "TYPE ACCOUNT NAME (MAX 16 CHARS):", 9, Color::Cyan, centerX, centerY - 35.f);
