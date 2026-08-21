@@ -22,6 +22,7 @@ inline void Sleep(unsigned long ms) {
 #endif
 
 #include "Utils.h"
+#include "ProfileManager.h"
 #include "CPeople.h"
 #include "CVehicle.h"
 #include "CAnimal.h"
@@ -40,16 +41,17 @@ using namespace sf;
 // ENUM TRANG THAI MAN HINH
 // ================================================================
 enum class GameState {
-	MENU,      // Trang thai hien menu chinh, cho nguoi choi chon Start, Load, Settings, Exit
-	SETTINGS,  // Trang thai cai dat (bat/tat am thanh, chinh volume, huong dan phim)
-	LOAD_GAME, // Trang thai menu chon 4 o save slot de Load
-	SAVE_GAME, // Trang thai menu chon 4 o save slot de Save
-	PLAYING,   // Trang thai dang choi, SubThread cap nhat logic, main render
-	PAUSED,    // Trang thai tam dung, SubThread khong cap nhat logic, main render menu pause
-	DEAD,      // Trang thai nguoi choi da chet, SubThread khong cap nhat logic, main render menu dead
-	GAMEOVER,  // Trang thai ket thuc game, nguoi choi het mang, SubThread khong cap nhat logic, main render menu game over
-	WIN,       // Trang thai nguoi choi chien thang, dat vach FINISH, SubThread khong cap nhat logic, main render menu win
-	LEVEL_UP   // Dat boi SubThread khi qua man, main xu ly nextLevel() an toan
+	MENU,            // Trang thai hien menu chinh, cho nguoi choi chon Start, Load, Settings, Exit
+	SETTINGS,        // Trang thai cai dat (bat/tat am thanh, chinh volume, huong dan phim)
+	LOAD_GAME,       // Trang thai menu chon 4 o save slot de Load
+	SAVE_GAME,       // Trang thai menu chon 4 o save slot de Save
+	PROFILE_MANAGER, // Trang thai quan ly tai khoan ca nhan & avatar
+	PLAYING,         // Trang thai dang choi, SubThread cap nhat logic, main render
+	PAUSED,          // Trang thai tam dung, SubThread khong cap nhat logic, main render menu pause
+	DEAD,            // Trang thai nguoi choi da chet, SubThread khong cap nhat logic, main render menu dead
+	GAMEOVER,        // Trang thai ket thuc game, nguoi choi het mang, SubThread khong cap nhat logic, main render menu game over
+	WIN,             // Trang thai nguoi choi chien thang, dat vach FINISH, SubThread khong cap nhat logic, main render menu win
+	LEVEL_UP         // Dat boi SubThread khi qua man, main xu ly nextLevel() an toan
 };
 
 // ================================================================
@@ -86,6 +88,15 @@ private:
 	int mMenuOption;     // 0: Play, 1: Load, 2: Settings, 3: Exit
 	int mSettingsOption; // 0: Music, 1: SFX, 2: Back to Menu
 	int mSelectedSlot;   // 0..3 (Save / Load slots 1 to 4)
+
+	// ---- Quan ly Tai khoan ca nhan (User Profiles) ----
+	ProfileManager mProfileManager;
+	int mProfileSelectOption;
+	bool mIsTypingProfileName;
+	std::string mTypedProfileName;
+	bool mIsRenamingProfile;
+	std::string mProfileStatusMsg;
+	Clock mProfileStatusClock;
 
 	// ---- Chu ky den giao thong dung chung ----
 	CTRAFFICLIGHT::State mTrafficState;
@@ -213,12 +224,32 @@ public:
 	void renderSettings(RenderWindow& window, Font& font);
 	void renderLoadMenu(RenderWindow& window, Font& font);
 	void renderSaveMenu(RenderWindow& window, Font& font);
+	void renderProfileManager(RenderWindow& window, Font& font);
+	void renderMenuProfileWidget(RenderWindow& window, Font& font);
 	void renderPauseMsg(RenderWindow& window, Font& font);
 	void renderDeadMsg(RenderWindow& window, Font& font);
 	void renderLevelUp(RenderWindow& window, Font& font);
 	void renderWin(RenderWindow& window, Font& font);
 	void renderGameOver(RenderWindow& window, Font& font);
 	void renderDebugMenu(RenderWindow& window, Font& font);
+
+	// ---- Profile Manager Controls ----
+	ProfileManager& getProfileManager() { return mProfileManager; }
+	const ProfileManager& getProfileManager() const { return mProfileManager; }
+	int  getProfileSelectOption() const { return mProfileSelectOption; }
+	void profileManagerUp();
+	void profileManagerDown();
+	void profileManagerSelect();
+	void profileManagerNew();
+	void profileManagerRename();
+	void profileManagerUploadAvatar();
+	void profileManagerPresetAvatar();
+	void profileManagerDelete();
+	void handleProfileTextInput(char32_t unicode);
+	bool isTypingProfileName() const { return mIsTypingProfileName; }
+	void cancelProfileTextInput();
+	void confirmProfileTextInput();
+	void setProfileStatus(const std::string& msg);
 
 	// ---- Menu & Settings Navigation ----
 	int  getMenuOption() const { return mMenuOption; }

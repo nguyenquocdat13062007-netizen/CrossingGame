@@ -114,13 +114,35 @@ int main() {
         keyHandledThisFrame = false;
 
         // ============================================================
-        // XU LY EVENT (KeyPressed)
+        // XU LY EVENT (KeyPressed & TextEntered & Mouse)
         // ============================================================
         while (const std::optional<Event> event = window.pollEvent()) {
             if (event->is<Event::Closed>()) {
                 cg.exitGame((HANDLE)t1.native_handle());
                 window.close();
                 break;
+            }
+
+            // 1. Text Typing Input (Khi tao moi hoac doi ten tai khoan)
+            if (const auto* textEntered = event->getIf<Event::TextEntered>()) {
+                if (cg.getState() == GameState::PROFILE_MANAGER && cg.isTypingProfileName()) {
+                    cg.handleProfileTextInput(textEntered->unicode);
+                    continue;
+                }
+            }
+
+            // 2. Mouse Click vao Profile Card o goc phai Menu
+            if (const auto* mouseBtn = event->getIf<Event::MouseButtonPressed>()) {
+                if (mouseBtn->button == Mouse::Button::Left) {
+                    if (cg.getState() == GameState::MENU) {
+                        Vector2i mpos = mouseBtn->position;
+                        if (mpos.x >= 680 && mpos.x <= 950 && mpos.y >= 10 && mpos.y <= 85) {
+                            cg.playMenuSound();
+                            cg.setState(GameState::PROFILE_MANAGER);
+                            continue;
+                        }
+                    }
+                }
             }
 
             const auto* key = event->getIf<Event::KeyPressed>();
@@ -214,9 +236,55 @@ int main() {
                     cg.playMenuSound();
                     cg.setState(GameState::SETTINGS);
                 }
+                else if (key->code == Keyboard::Key::Tab || key->code == Keyboard::Key::C) {
+                    cg.playMenuSound();
+                    cg.setState(GameState::PROFILE_MANAGER);
+                }
                 else if (key->code == Keyboard::Key::Num4 || key->code == Keyboard::Key::Numpad4 || key->code == Keyboard::Key::Escape) {
                     cg.exitGame((HANDLE)t1.native_handle());
                     window.close();
+                }
+            }
+
+            // PROFILE_MANAGER
+            else if (cg.getState() == GameState::PROFILE_MANAGER) {
+                if (cg.isTypingProfileName()) {
+                    if (key->code == Keyboard::Key::Enter) {
+                        cg.confirmProfileTextInput();
+                    }
+                    else if (key->code == Keyboard::Key::Escape) {
+                        cg.cancelProfileTextInput();
+                    }
+                }
+                else {
+                    if (key->code == Keyboard::Key::Up || key->code == Keyboard::Key::W) {
+                        cg.profileManagerUp();
+                    }
+                    else if (key->code == Keyboard::Key::Down || key->code == Keyboard::Key::S) {
+                        cg.profileManagerDown();
+                    }
+                    else if (key->code == Keyboard::Key::Enter || key->code == Keyboard::Key::Space) {
+                        cg.profileManagerSelect();
+                    }
+                    else if (key->code == Keyboard::Key::N) {
+                        cg.profileManagerNew();
+                    }
+                    else if (key->code == Keyboard::Key::U) {
+                        cg.profileManagerUploadAvatar();
+                    }
+                    else if (key->code == Keyboard::Key::P) {
+                        cg.profileManagerPresetAvatar();
+                    }
+                    else if (key->code == Keyboard::Key::R) {
+                        cg.profileManagerRename();
+                    }
+                    else if (key->code == Keyboard::Key::D) {
+                        cg.profileManagerDelete();
+                    }
+                    else if (key->code == Keyboard::Key::Escape || key->code == Keyboard::Key::Tab || key->code == Keyboard::Key::C) {
+                        cg.playMenuSound();
+                        cg.setState(GameState::MENU);
+                    }
                 }
             }
 
@@ -475,6 +543,10 @@ int main() {
         case GameState::SAVE_GAME:
             cg.drawGame(window, font);
             cg.renderSaveMenu(window, font);
+            break;
+        case GameState::PROFILE_MANAGER:
+            cg.drawGame(window, font);
+            cg.renderProfileManager(window, font);
             break;
         case GameState::PLAYING:
             cg.drawGame(window, font);

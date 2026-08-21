@@ -76,6 +76,7 @@ CGAME::CGAME()
       mStartY(68), mFinishY(2),
       mState(GameState::MENU),
       mMenuOption(0), mSettingsOption(0), mSelectedSlot(0),
+      mProfileSelectOption(0), mIsTypingProfileName(false), mTypedProfileName(""), mIsRenamingProfile(false), mProfileStatusMsg(""),
       mTrafficState(CTRAFFICLIGHT::GREEN),
       mTrafficElapsedMs(0),
       mGreenDurationMs(3000), mRedDurationMs(2000),
@@ -985,7 +986,9 @@ void CGAME::resetGame() {
 }
 
 void CGAME::nextLevel() {
+	mScore += 1000 + mLevel * 500;
 	mLevel++;
+	mProfileManager.updateStats(mScore, mLevel);
 	playLevelWinSound();
 	InitLanes();
 	setState(GameState::PLAYING);
@@ -1159,10 +1162,10 @@ void CGAME::updateTrafficAudio() {
 }
 
 void CGAME::updateStateAudio(GameState oldState, GameState newState) {
-	if (oldState == GameState::WIN || newState == GameState::MENU || newState == GameState::SETTINGS || newState == GameState::PLAYING || newState == GameState::LOAD_GAME || newState == GameState::SAVE_GAME) {
+	if (oldState == GameState::WIN || newState == GameState::MENU || newState == GameState::SETTINGS || newState == GameState::PLAYING || newState == GameState::LOAD_GAME || newState == GameState::SAVE_GAME || newState == GameState::PROFILE_MANAGER) {
 		if (mMusicWinLoaded) mMusicWin.stop();
 	}
-	if (oldState == GameState::GAMEOVER || newState == GameState::MENU || newState == GameState::SETTINGS || newState == GameState::PLAYING || newState == GameState::LOAD_GAME || newState == GameState::SAVE_GAME) {
+	if (oldState == GameState::GAMEOVER || newState == GameState::MENU || newState == GameState::SETTINGS || newState == GameState::PLAYING || newState == GameState::LOAD_GAME || newState == GameState::SAVE_GAME || newState == GameState::PROFILE_MANAGER) {
 		if (mMusicGameOverLoaded) mMusicGameOver.stop();
 	}
 	if (oldState == GameState::DEAD || newState == GameState::PLAYING || newState == GameState::MENU) {
@@ -1181,6 +1184,7 @@ void CGAME::updateStateAudio(GameState oldState, GameState newState) {
 	case GameState::MENU:
 	case GameState::SETTINGS:
 	case GameState::LOAD_GAME:
+	case GameState::PROFILE_MANAGER:
 		if (mMusicGameLoaded) mMusicGame.stop();
 		if (mMusicCarPassingLoaded) mMusicCarPassing.stop();
 		stopTrafficAudio();
@@ -1318,33 +1322,110 @@ static void DrawTextWithShadow(RenderWindow& window, const Font& font, const str
 	DrawCrispText(window, mainText, targetX, targetY);
 }
 
+static void DrawPopupFrame(RenderWindow& window, float centerX, float centerY, float width, float height, Color borderColor, Color innerAccentColor = Color(255, 255, 255, 70), const Texture* bgTex = nullptr, Color fallbackBg = Color(12, 16, 28, 252)) {
+	// 1. Draw Background Image Sprite if available, otherwise dark ground box
+	if (bgTex && bgTex->getSize().x > 0 && bgTex->getSize().y > 0) {
+		Sprite spr(*bgTex);
+		FloatRect b = spr.getLocalBounds();
+		if (b.size.x > 0.f && b.size.y > 0.f) {
+			spr.setOrigin(Vector2f(b.size.x / 2.0f, b.size.y / 2.0f));
+			spr.setScale(Vector2f(width / b.size.x, height / b.size.y));
+			spr.setPosition(Vector2f(centerX, centerY));
+			window.draw(spr);
+		}
+	}
+	else {
+		RectangleShape box(Vector2f(width, height));
+		box.setOrigin(Vector2f(width / 2.0f, height / 2.0f));
+		box.setPosition(Vector2f(centerX, centerY));
+		box.setFillColor(fallbackBg);
+		window.draw(box);
+	}
+
+	// 2. High-Tech Outer Border
+	RectangleShape outerBorder(Vector2f(width, height));
+	outerBorder.setOrigin(Vector2f(width / 2.0f, height / 2.0f));
+	outerBorder.setPosition(Vector2f(centerX, centerY));
+	outerBorder.setFillColor(Color::Transparent);
+	outerBorder.setOutlineThickness(3.5f);
+	outerBorder.setOutlineColor(borderColor);
+	window.draw(outerBorder);
+
+	// 3. High-Tech Inset Inner Border
+	float inW = width - 12.f;
+	float inH = height - 12.f;
+	if (inW > 10.f && inH > 10.f) {
+		RectangleShape innerBox(Vector2f(inW, inH));
+		innerBox.setOrigin(Vector2f(inW / 2.0f, inH / 2.0f));
+		innerBox.setPosition(Vector2f(centerX, centerY));
+		innerBox.setFillColor(Color::Transparent);
+		innerBox.setOutlineThickness(1.5f);
+		innerBox.setOutlineColor(innerAccentColor);
+		window.draw(innerBox);
+	}
+
+	// 4. Glowing Corner Accents (Cyberpunk / Retro Arcade Brackets)
+	float bracketLen = std::min(18.f, std::min(width, height) * 0.12f);
+	auto drawCornerBracket = [&](float cx, float cy, float sx, float sy) {
+		RectangleShape hLine(Vector2f(bracketLen * sx, 3.f));
+		hLine.setPosition(Vector2f(cx, cy));
+		hLine.setFillColor(borderColor);
+		window.draw(hLine);
+
+		RectangleShape vLine(Vector2f(3.f, bracketLen * sy));
+		vLine.setPosition(Vector2f(cx, cy));
+		vLine.setFillColor(borderColor);
+		window.draw(vLine);
+	};
+
+	float halfW = width / 2.0f;
+	float halfH = height / 2.0f;
+	drawCornerBracket(centerX - halfW, centerY - halfH, 1.f, 1.f);
+	drawCornerBracket(centerX + halfW - 3.f, centerY - halfH, -1.f, 1.f);
+	drawCornerBracket(centerX - halfW, centerY + halfH - 3.f, 1.f, -1.f);
+	drawCornerBracket(centerX + halfW - 3.f, centerY + halfH - 3.f, -1.f, -1.f);
+}
+
 void CGAME::drawHUD(RenderWindow& window, Font& font) {
 	RectangleShape banner(Vector2f((float)WINDOW_WIDTH, 44.f));
 	banner.setPosition(Vector2f(0.f, 0.f));
-	banner.setFillColor(Color(10, 14, 24, 245));
+	banner.setFillColor(Color(10, 14, 24, 248));
 	banner.setOutlineThickness(2.f);
 	banner.setOutlineColor(Color(65, 75, 100));
 	window.draw(banner);
 
-	DrawTextWithShadow(window, font, "LVL:" + to_string(mLevel), 14, Color::Yellow, 60.f, 22.f);
-	DrawTextWithShadow(window, font, "SCORE:" + to_string(mScore), 14, Color::Cyan, 200.f, 22.f);
+	// Accent bottom glow line on HUD banner
+	RectangleShape hudGlow(Vector2f((float)WINDOW_WIDTH, 2.f));
+	hudGlow.setPosition(Vector2f(0.f, 44.f));
+	hudGlow.setFillColor(Color(0, 200, 255, 160));
+	window.draw(hudGlow);
+
+	DrawTextWithShadow(window, font, "LVL:" + to_string(mLevel), 13, Color::Yellow, 48.f, 22.f);
+	DrawTextWithShadow(window, font, "SCORE:" + to_string(mScore), 13, Color::Cyan, 155.f, 22.f);
 
 	string hearts = "";
-	for (int i = 0; i < mLives; ++i) hearts += "+ ";
-	DrawTextWithShadow(window, font, "HP:" + to_string(mLives) + " " + hearts, 14, Color(255, 90, 90), 380.f, 22.f);
+	for (int i = 0; i < mLives; ++i) hearts += "+";
+	DrawTextWithShadow(window, font, "HP:" + to_string(mLives) + " " + hearts, 13, Color(255, 90, 90), 275.f, 22.f);
 
 	if (mGodMode) {
-		DrawTextWithShadow(window, font, "[GOD MODE: ON]", 13, Color(255, 215, 0), 550.f, 22.f);
+		DrawTextWithShadow(window, font, "[GOD:ON]", 12, Color(255, 215, 0), 400.f, 22.f);
 	}
 	else {
 		int totalDist = max(1, mStartY - mFinishY);
 		int currentProgress = max(0, min(100, (100 * (mStartY - cn.getY())) / totalDist));
-		DrawTextWithShadow(window, font, "STAGE:" + to_string(currentProgress) + "%", 13, Color(140, 220, 255), 550.f, 22.f);
+		DrawTextWithShadow(window, font, "STAGE:" + to_string(currentProgress) + "%", 12, Color(140, 220, 255), 400.f, 22.f);
 	}
 
+	// Active Player Profile Name
+	UserProfile actProf = mProfileManager.getActiveProfile();
+	string profTag = "[" + actProf.name + "]";
+	DrawTextWithShadow(window, font, profTag, 11, Color(255, 230, 100), 555.f, 22.f);
+
+	// Music, Pause, Debug Controls with guaranteed generous spacing
 	string sndStr = mMusicEnabled ? "[M]MUS:ON" : "[M]MUS:OFF";
-	DrawTextWithShadow(window, font, sndStr, 11, mMusicEnabled ? Color::Green : Color(160, 160, 160), (float)WINDOW_WIDTH - 250.f, 22.f);
-	DrawTextWithShadow(window, font, "[P]PAUSE [`]DEBUG", 11, Color(210, 210, 220), (float)WINDOW_WIDTH - 110.f, 22.f);
+	DrawTextWithShadow(window, font, sndStr, 11, mMusicEnabled ? Color::Green : Color(160, 160, 160), 715.f, 22.f);
+	DrawTextWithShadow(window, font, "[P]PAUSE", 11, Color(220, 225, 240), 820.f, 22.f);
+	DrawTextWithShadow(window, font, "[`]DBG", 11, Color(160, 200, 230), 905.f, 22.f);
 }
 
 // ================================================================
@@ -1624,7 +1705,7 @@ void CGAME::renderMenu(RenderWindow& window, Font& font) {
 		Sprite logo(mTexTitleLogo);
 		FloatRect b = logo.getLocalBounds();
 		if (b.size.x > 0.f && b.size.y > 0.f) {
-			float targetW = 460.f;
+			float targetW = 380.f;
 			float scale = targetW / b.size.x;
 			logo.setScale(Vector2f(scale, scale));
 			logo.setOrigin(Vector2f(b.size.x / 2.0f, b.size.y / 2.0f));
@@ -1633,7 +1714,7 @@ void CGAME::renderMenu(RenderWindow& window, Font& font) {
 		}
 	}
 	else {
-		DrawTextWithShadow(window, font, "CROSSING GAME", 28, Color::Yellow, centerX, 100.f);
+		DrawTextWithShadow(window, font, "CROSSING GAME", 24, Color::Yellow, centerX, 100.f);
 	}
 
 	// 3. Crisp Retro Arcade Menu Buttons
@@ -1672,7 +1753,37 @@ void CGAME::renderMenu(RenderWindow& window, Font& font) {
 		DrawTextWithShadow(window, font, textStr, 15, textColor, centerX, by);
 	}
 
-	DrawTextWithShadow(window, font, "[W/S] or [UP/DOWN] Select  [ENTER] Confirm", 12, Color(200, 200, 220), centerX, winH - 24.f);
+	// 4. Render Active Player Profile Widget in Top-Right Corner (Non-overlapping with Logo)
+	renderMenuProfileWidget(window, font);
+
+	DrawTextWithShadow(window, font, "[W/S] Select  [ENTER] Confirm  [TAB / C] Accounts", 11, Color(180, 215, 245), centerX, winH - 24.f);
+}
+
+void CGAME::renderMenuProfileWidget(RenderWindow& window, Font& font) {
+	// Top-Right Interactive Profile Card (Compact & Far From Logo)
+	float cardW = 210.f;
+	float cardH = 56.f;
+	float cardCenterX = (float)WINDOW_WIDTH - 120.f;
+	float cardCenterY = 38.f;
+
+	// Frame Box with Cyberpunk Neon Border
+	DrawPopupFrame(window, cardCenterX, cardCenterY, cardW, cardH, Color(0, 220, 255), Color(0, 150, 255, 90), nullptr, Color(14, 18, 32, 240));
+
+	// Draw Avatar Icon
+	int actIdx = mProfileManager.getActiveIndex();
+	float avatarSize = 38.f;
+	float avatarX = cardCenterX - cardW / 2.0f + 8.f;
+	float avatarY = cardCenterY - avatarSize / 2.0f;
+	mProfileManager.drawAvatarBadge(window, actIdx, avatarX, avatarY, avatarSize, false, Color(255, 215, 0));
+
+	// Profile Name & Stats
+	UserProfile prof = mProfileManager.getActiveProfile();
+	float textCenterX = avatarX + avatarSize + (cardW - avatarSize - 16.f) / 2.0f;
+
+	DrawTextWithShadow(window, font, prof.name, 10, Color::Yellow, textCenterX, cardCenterY - 9.f);
+
+	string bestStr = "[TAB] LV." + to_string(prof.highestLevel) + " " + to_string(prof.highScore) + "P";
+	DrawTextWithShadow(window, font, bestStr, 8, Color(130, 220, 255), textCenterX, cardCenterY + 9.f);
 }
 
 void CGAME::renderSettings(RenderWindow& window, Font& font) {
@@ -1697,16 +1808,10 @@ void CGAME::renderSettings(RenderWindow& window, Font& font) {
 		window.draw(darkBg);
 	}
 
-	// 2. High-Contrast Popup Panel Frame
-	float pw = 660.f;
-	float ph = 460.f;
-	RectangleShape panelBox(Vector2f(pw, ph));
-	panelBox.setOrigin(Vector2f(pw / 2.0f, ph / 2.0f));
-	panelBox.setPosition(Vector2f(centerX, centerY));
-	panelBox.setFillColor(Color(12, 16, 28, 252));
-	panelBox.setOutlineThickness(4.f);
-	panelBox.setOutlineColor(Color(0, 210, 230)); // Cyan border
-	window.draw(panelBox);
+	// 2. High-Contrast Popup Panel Frame with Double Borders & Image Background
+	float pw = 680.f;
+	float ph = 480.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(0, 220, 255), Color(0, 160, 255, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr);
 
 	// 3. Settings Title
 	DrawTextWithShadow(window, font, "AUDIO & CONTROLS SETTINGS", 18, Color::Yellow, centerX, centerY - 190.f);
@@ -1804,14 +1909,8 @@ void CGAME::renderLoadMenu(RenderWindow& window, Font& font) {
 	}
 
 	float pw = 680.f;
-	float ph = 470.f;
-	RectangleShape panelBox(Vector2f(pw, ph));
-	panelBox.setOrigin(Vector2f(pw / 2.0f, ph / 2.0f));
-	panelBox.setPosition(Vector2f(centerX, centerY));
-	panelBox.setFillColor(Color(12, 16, 28, 252));
-	panelBox.setOutlineThickness(4.f);
-	panelBox.setOutlineColor(Color(0, 210, 230)); // Cyan border
-	window.draw(panelBox);
+	float ph = 480.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(0, 220, 255), Color(0, 160, 255, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr);
 
 	DrawTextWithShadow(window, font, "LOAD GAME - SELECT SLOT", 18, Color::Yellow, centerX, centerY - 195.f);
 
@@ -1885,14 +1984,8 @@ void CGAME::renderSaveMenu(RenderWindow& window, Font& font) {
 	}
 
 	float pw = 680.f;
-	float ph = 470.f;
-	RectangleShape panelBox(Vector2f(pw, ph));
-	panelBox.setOrigin(Vector2f(pw / 2.0f, ph / 2.0f));
-	panelBox.setPosition(Vector2f(centerX, centerY));
-	panelBox.setFillColor(Color(12, 16, 28, 252));
-	panelBox.setOutlineThickness(4.f);
-	panelBox.setOutlineColor(Color(255, 215, 0)); // Gold border
-	window.draw(panelBox);
+	float ph = 480.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 215, 0), Color(255, 230, 100, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr);
 
 	DrawTextWithShadow(window, font, "SAVE GAME - CHOOSE SLOT TO OVERWRITE", 16, Color::Yellow, centerX, centerY - 195.f);
 
@@ -1945,18 +2038,12 @@ void CGAME::renderPauseMsg(RenderWindow& window, Font& font) {
 	float centerX = (float)WINDOW_WIDTH / 2.0f;
 	float centerY = (float)WINDOW_HEIGHT / 2.0f;
 
-	float pw = 480.f, ph = 240.f;
-	RectangleShape box(Vector2f(pw, ph));
-	box.setOrigin(Vector2f(pw / 2.0f, ph / 2.0f));
-	box.setPosition(Vector2f(centerX, centerY));
-	box.setFillColor(Color(12, 18, 32, 245));
-	box.setOutlineThickness(4.f);
-	box.setOutlineColor(Color(80, 150, 255));
-	window.draw(box);
+	float pw = 500.f, ph = 260.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(80, 160, 255), Color(140, 200, 255, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(12, 18, 34, 250));
 
-	DrawTextWithShadow(window, font, "GAME PAUSED", 26, Color(100, 180, 255), centerX, centerY - 50.f);
-	DrawTextWithShadow(window, font, "[P] Resume Game", 14, Color::Yellow, centerX, centerY + 5.f);
-	DrawTextWithShadow(window, font, "[ESC] Return to Menu", 13, Color(200, 200, 210), centerX, centerY + 50.f);
+	DrawTextWithShadow(window, font, "GAME PAUSED", 24, Color(100, 190, 255), centerX, centerY - 55.f);
+	DrawTextWithShadow(window, font, "[P] Resume Game", 13, Color::Yellow, centerX, centerY + 5.f);
+	DrawTextWithShadow(window, font, "[M] Toggle Audio   [ESC] Menu", 11, Color(180, 190, 210), centerX, centerY + 50.f);
 }
 
 void CGAME::renderDeadMsg(RenderWindow& window, Font& font) {
@@ -1965,26 +2052,8 @@ void CGAME::renderDeadMsg(RenderWindow& window, Font& font) {
 	float centerX = winW / 2.0f;
 	float centerY = winH / 2.0f;
 
-	if (mMenuAssetsLoaded) {
-		Sprite panel(mTexPanelPopup);
-		FloatRect pb = panel.getLocalBounds();
-		if (pb.size.x > 0.f && pb.size.y > 0.f) {
-			panel.setOrigin(Vector2f(pb.size.x / 2.0f, pb.size.y / 2.0f));
-			panel.setScale(Vector2f(1.1f, 0.95f));
-			panel.setPosition(Vector2f(centerX, centerY));
-			window.draw(panel);
-		}
-	}
-	else {
-		float pw = 520.f, ph = 320.f;
-		RectangleShape box(Vector2f(pw, ph));
-		box.setOrigin(Vector2f(pw / 2.0f, ph / 2.0f));
-		box.setPosition(Vector2f(centerX, centerY));
-		box.setFillColor(Color(25, 10, 15, 245));
-		box.setOutlineThickness(4.f);
-		box.setOutlineColor(Color::Red);
-		window.draw(box);
-	}
+	float pw = 540.f, ph = 320.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 45, 65), Color(255, 120, 120, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(25, 10, 18, 252));
 
 	DrawTextWithShadow(window, font, "YOU DIED!", 28, Color::Red, centerX, centerY - 80.f);
 	DrawTextWithShadow(window, font, "LIVES REMAINING: " + to_string(mLives), 14, Color::Yellow, centerX, centerY - 20.f);
@@ -1996,16 +2065,8 @@ void CGAME::renderLevelUp(RenderWindow& window, Font& font) {
 	float centerX = (float)WINDOW_WIDTH / 2.0f;
 	float centerY = (float)WINDOW_HEIGHT / 2.0f;
 
-	if (mMenuAssetsLoaded) {
-		Sprite panel(mTexPanelPopup);
-		FloatRect pb = panel.getLocalBounds();
-		if (pb.size.x > 0.f && pb.size.y > 0.f) {
-			panel.setOrigin(Vector2f(pb.size.x / 2.0f, pb.size.y / 2.0f));
-			panel.setScale(Vector2f(1.0f, 0.8f));
-			panel.setPosition(Vector2f(centerX, centerY));
-			window.draw(panel);
-		}
-	}
+	float pw = 540.f, ph = 220.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 80, 220), Color(255, 215, 0, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(20, 14, 28, 252));
 
 	DrawTextWithShadow(window, font, "LEVEL COMPLETED!", 22, Color::Magenta, centerX, centerY - 25.f);
 	DrawTextWithShadow(window, font, "NEXT: LEVEL " + to_string(mLevel), 16, Color::Yellow, centerX, centerY + 30.f);
@@ -2028,27 +2089,9 @@ void CGAME::renderWin(RenderWindow& window, Font& font) {
 		}
 	}
 
-	// 2. Popup Panel
-	if (mMenuAssetsLoaded) {
-		Sprite panel(mTexPanelPopup);
-		FloatRect pb = panel.getLocalBounds();
-		if (pb.size.x > 0.f && pb.size.y > 0.f) {
-			panel.setOrigin(Vector2f(pb.size.x / 2.0f, pb.size.y / 2.0f));
-			panel.setScale(Vector2f(1.22f, 1.12f));
-			panel.setPosition(Vector2f(centerX, centerY));
-			window.draw(panel);
-		}
-	}
-	else {
-		float pw = 600.f, ph = 400.f;
-		RectangleShape box(Vector2f(pw, ph));
-		box.setOrigin(Vector2f(pw / 2.0f, ph / 2.0f));
-		box.setPosition(Vector2f(centerX, centerY));
-		box.setFillColor(Color(18, 16, 30, 250));
-		box.setOutlineThickness(4.f);
-		box.setOutlineColor(Color::Yellow);
-		window.draw(box);
-	}
+	// 2. High-Contrast Gold Double-Border Frame with Popup Panel Texture
+	float pw = 620.f, ph = 410.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 215, 0), Color(255, 240, 150, 100), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(18, 16, 30, 252));
 
 	// 3. Victory Header
 	DrawTextWithShadow(window, font, "VICTORY!", 28, Color::Yellow, centerX, centerY - 130.f);
@@ -2076,26 +2119,8 @@ void CGAME::renderGameOver(RenderWindow& window, Font& font) {
 	float centerX = winW / 2.0f;
 	float centerY = winH / 2.0f;
 
-	if (mMenuAssetsLoaded) {
-		Sprite panel(mTexPanelPopup);
-		FloatRect pb = panel.getLocalBounds();
-		if (pb.size.x > 0.f && pb.size.y > 0.f) {
-			panel.setOrigin(Vector2f(pb.size.x / 2.0f, pb.size.y / 2.0f));
-			panel.setScale(Vector2f(1.15f, 1.0f));
-			panel.setPosition(Vector2f(centerX, centerY));
-			window.draw(panel);
-		}
-	}
-	else {
-		float pw = 540.f, ph = 340.f;
-		RectangleShape box(Vector2f(pw, ph));
-		box.setOrigin(Vector2f(pw / 2.0f, ph / 2.0f));
-		box.setPosition(Vector2f(centerX, centerY));
-		box.setFillColor(Color(25, 10, 15, 250));
-		box.setOutlineThickness(4.f);
-		box.setOutlineColor(Color::Red);
-		window.draw(box);
-	}
+	float pw = 560.f, ph = 340.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(255, 45, 65), Color(255, 120, 120, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(25, 10, 18, 252));
 
 	DrawTextWithShadow(window, font, "GAME OVER", 30, Color::Red, centerX, centerY - 90.f);
 	DrawTextWithShadow(window, font, "FINAL SCORE: " + to_string(mScore), 15, Color::White, centerX, centerY - 20.f);
@@ -2115,14 +2140,8 @@ void CGAME::renderDebugMenu(RenderWindow& window, Font& font) {
 
 	// High-contrast Cyberpunk Debug Console Box
 	float pw = 680.f;
-	float ph = 420.f;
-	RectangleShape panel(Vector2f(pw, ph));
-	panel.setOrigin(Vector2f(pw / 2.0f, ph / 2.0f));
-	panel.setPosition(Vector2f(centerX, centerY));
-	panel.setFillColor(Color(10, 15, 26, 250));
-	panel.setOutlineThickness(3.f);
-	panel.setOutlineColor(Color(0, 240, 255)); // Cyan / Neon border
-	window.draw(panel);
+	float ph = 430.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(0, 240, 255), Color(0, 180, 255, 90), nullptr, Color(10, 15, 26, 252));
 
 	// Console Header
 	DrawTextWithShadow(window, font, "[ DEVELOPER DEBUG CONSOLE ]", 16, Color::Yellow, centerX, centerY - 170.f);
@@ -2172,3 +2191,257 @@ void CGAME::renderDebugMenu(RenderWindow& window, Font& font) {
 	// Hotkey hints
 	DrawTextWithShadow(window, font, "[W/S] Select  [ENTER] Toggle/Execute  [1] God Mode  [`] Close", 11, Color(160, 180, 210), centerX, centerY + 175.f);
 }
+
+// ================================================================
+// PROFILE MANAGER RENDERING & CONTROLS
+// ================================================================
+void CGAME::renderProfileManager(RenderWindow& window, Font& font) {
+	float winW = (float)WINDOW_WIDTH;
+	float winH = (float)WINDOW_HEIGHT;
+	float centerX = winW / 2.0f;
+	float centerY = winH / 2.0f;
+
+	// 1. Dimmed Background
+	RectangleShape dimBg(Vector2f(winW, winH));
+	dimBg.setFillColor(Color(8, 12, 22, 235));
+	window.draw(dimBg);
+
+	// 2. High-Contrast Double-Border Popup Frame with Panel Texture Background
+	float pw = 740.f;
+	float ph = 500.f;
+	DrawPopupFrame(window, centerX, centerY, pw, ph, Color(0, 220, 255), Color(0, 160, 255, 90), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(12, 16, 28, 252));
+
+	// 3. Header
+	DrawTextWithShadow(window, font, "USER PROFILES & AVATAR MANAGER", 16, Color::Yellow, centerX, centerY - 215.f);
+	DrawTextWithShadow(window, font, "Select Profile, Upload Avatar Photo, Or Create New Account", 9, Color(160, 220, 255), centerX, centerY - 188.f);
+
+	// 4. List of Profiles
+	int count = mProfileManager.getProfileCount();
+	if (count > 0) {
+		mProfileSelectOption = std::clamp(mProfileSelectOption, 0, count - 1);
+		int startIdx = std::max(0, std::min(mProfileSelectOption - 2, count - 4));
+		startIdx = std::max(0, startIdx);
+
+		for (int k = 0; k < 4; ++k) {
+			int i = startIdx + k;
+			if (i >= count) break;
+
+			float sy = centerY - 125.f + (float)k * 70.f;
+			bool isSel = (i == mProfileSelectOption);
+			bool isAct = (i == mProfileManager.getActiveIndex());
+
+			RectangleShape rowBox(Vector2f(680.f, 60.f));
+			rowBox.setOrigin(Vector2f(340.f, 30.f));
+			rowBox.setPosition(Vector2f(centerX, sy));
+
+			if (isSel) {
+				rowBox.setFillColor(Color(25, 55, 95, 245));
+				rowBox.setOutlineThickness(3.f);
+				rowBox.setOutlineColor(Color(255, 215, 0)); // Gold
+			}
+			else {
+				rowBox.setFillColor(Color(16, 22, 36, 210));
+				rowBox.setOutlineThickness(1.5f);
+				rowBox.setOutlineColor(Color(65, 75, 105));
+			}
+			window.draw(rowBox);
+
+			// Avatar Badge
+			float avSize = 46.f;
+			float avX = centerX - 325.f;
+			float avY = sy - avSize / 2.0f;
+			mProfileManager.drawAvatarBadge(window, i, avX, avY, avSize, isSel, isAct ? Color(0, 255, 128) : Color(0, 220, 255));
+
+			// Profile Name & Details
+			UserProfile prof = mProfileManager.getProfile(i);
+			string titleStr = (isSel ? "> " : "  ") + prof.name + (isAct ? "  [ACTIVE]" : "");
+			Color titleCol = isSel ? Color(255, 230, 80) : (isAct ? Color(80, 255, 140) : Color::White);
+			DrawTextWithShadow(window, font, titleStr, 12, titleCol, centerX + 15.f, sy - 12.f);
+
+			string subStr = "BEST: LV." + to_string(prof.highestLevel) + " | " + to_string(prof.highScore) + " PTS | CREATED: " + prof.createdAt;
+			DrawTextWithShadow(window, font, subStr, 8, Color(140, 215, 255), centerX + 15.f, sy + 13.f);
+		}
+	}
+
+	// 5. Status Feedback Banner
+	if (mProfileStatusClock.getElapsedTime().asSeconds() < 4.0f && !mProfileStatusMsg.empty()) {
+		DrawTextWithShadow(window, font, mProfileStatusMsg, 10, Color(80, 255, 140), centerX, centerY + 175.f);
+	}
+
+	// 6. Action Hotkeys Toolbar
+	DrawTextWithShadow(window, font, "[ENTER] Select  [N] New  [U] Upload Photo  [P] Preset  [R] Rename  [D] Delete  [ESC] Back", 9, Color(180, 220, 255), centerX, centerY + 215.f);
+
+	// 7. Modal Text Input Box (When Creating or Renaming)
+	if (mIsTypingProfileName) {
+		RectangleShape dimInput(Vector2f(winW, winH));
+		dimInput.setFillColor(Color(0, 0, 0, 160));
+		window.draw(dimInput);
+
+		DrawPopupFrame(window, centerX, centerY, 520.f, 220.f, Color(255, 215, 0), Color(255, 240, 150, 100), mMenuAssetsLoaded ? &mTexPanelPopup : nullptr, Color(14, 18, 32, 252));
+
+		DrawTextWithShadow(window, font, mIsRenamingProfile ? "RENAME PROFILE" : "CREATE NEW PROFILE", 14, Color::Yellow, centerX, centerY - 65.f);
+		DrawTextWithShadow(window, font, "TYPE ACCOUNT NAME (MAX 16 CHARS):", 9, Color::Cyan, centerX, centerY - 35.f);
+
+		RectangleShape inBox(Vector2f(440.f, 40.f));
+		inBox.setOrigin(Vector2f(220.f, 20.f));
+		inBox.setPosition(Vector2f(centerX, centerY + 5.f));
+		inBox.setFillColor(Color(8, 12, 22, 240));
+		inBox.setOutlineThickness(2.f);
+		inBox.setOutlineColor(Color(0, 220, 255));
+		window.draw(inBox);
+
+		bool showCursor = ((int)(mProfileStatusClock.getElapsedTime().asSeconds() * 3.f) % 2 == 0);
+		string textWithCursor = mTypedProfileName + (showCursor ? "_" : " ");
+		DrawTextWithShadow(window, font, textWithCursor, 12, Color::White, centerX, centerY + 5.f);
+
+		DrawTextWithShadow(window, font, "[ENTER] Confirm    [ESC] Cancel", 10, Color(255, 230, 100), centerX, centerY + 65.f);
+	}
+}
+
+void CGAME::profileManagerUp() {
+	if (mIsTypingProfileName) return;
+	int count = mProfileManager.getProfileCount();
+	if (count > 0) {
+		mProfileSelectOption = (mProfileSelectOption - 1 + count) % count;
+		playMenuSound();
+	}
+}
+
+void CGAME::profileManagerDown() {
+	if (mIsTypingProfileName) return;
+	int count = mProfileManager.getProfileCount();
+	if (count > 0) {
+		mProfileSelectOption = (mProfileSelectOption + 1) % count;
+		playMenuSound();
+	}
+}
+
+void CGAME::profileManagerSelect() {
+	if (mIsTypingProfileName) {
+		confirmProfileTextInput();
+		return;
+	}
+	mProfileManager.setActiveIndex(mProfileSelectOption);
+	setProfileStatus("Switched active profile to: " + mProfileManager.getActiveProfile().name);
+	playMenuSound();
+}
+
+void CGAME::profileManagerNew() {
+	if (mIsTypingProfileName) return;
+	mIsTypingProfileName = true;
+	mIsRenamingProfile = false;
+	mTypedProfileName = "Player " + to_string(mProfileManager.getProfileCount() + 1);
+	playMenuSound();
+}
+
+void CGAME::profileManagerRename() {
+	if (mIsTypingProfileName) return;
+	int count = mProfileManager.getProfileCount();
+	if (count == 0) return;
+	mIsTypingProfileName = true;
+	mIsRenamingProfile = true;
+	mTypedProfileName = mProfileManager.getProfile(mProfileSelectOption).name;
+	playMenuSound();
+}
+
+void CGAME::profileManagerUploadAvatar() {
+	if (mIsTypingProfileName) return;
+	int count = mProfileManager.getProfileCount();
+	if (count == 0) return;
+
+	setProfileStatus("Opening file dialog to choose image...");
+	std::string imagePath = ProfileManager::openNativeImageFileDialog();
+	if (!imagePath.empty()) {
+		bool ok = mProfileManager.setAvatarFromFile(mProfileSelectOption, imagePath);
+		if (ok) {
+			setProfileStatus("Avatar image updated successfully!");
+			playMenuSound();
+		}
+		else {
+			setProfileStatus("Failed to process image format.");
+			playErrorSound();
+		}
+	}
+	else {
+		setProfileStatus("No image selected.");
+	}
+}
+
+void CGAME::profileManagerPresetAvatar() {
+	if (mIsTypingProfileName) return;
+	int count = mProfileManager.getProfileCount();
+	if (count == 0) return;
+
+	UserProfile prof = mProfileManager.getProfile(mProfileSelectOption);
+	int curPreset = 1;
+	if (prof.avatarPath.rfind("PRESET_", 0) == 0) {
+		try { curPreset = std::stoi(prof.avatarPath.substr(7)); } catch (...) { curPreset = 1; }
+	}
+	int nextPreset = (curPreset % 6) + 1;
+	mProfileManager.setAvatarPreset(mProfileSelectOption, nextPreset);
+	setProfileStatus("Selected Avatar Preset #" + to_string(nextPreset));
+	playMenuSound();
+}
+
+void CGAME::profileManagerDelete() {
+	if (mIsTypingProfileName) return;
+	if (mProfileManager.getProfileCount() <= 1) {
+		setProfileStatus("Cannot delete the only remaining profile!");
+		playErrorSound();
+		return;
+	}
+
+	string delName = mProfileManager.getProfile(mProfileSelectOption).name;
+	mProfileManager.deleteProfile(mProfileSelectOption);
+	mProfileSelectOption = std::clamp(mProfileSelectOption, 0, mProfileManager.getProfileCount() - 1);
+	setProfileStatus("Deleted profile: " + delName);
+	playMenuSound();
+}
+
+void CGAME::handleProfileTextInput(char32_t unicode) {
+	if (!mIsTypingProfileName) return;
+
+	if (unicode == 8) { // Backspace
+		if (!mTypedProfileName.empty()) {
+			mTypedProfileName.pop_back();
+		}
+	}
+	else if (unicode >= 32 && unicode < 127) { // Printable ASCII
+		if (mTypedProfileName.size() < 16) {
+			mTypedProfileName += (char)unicode;
+		}
+	}
+}
+
+void CGAME::cancelProfileTextInput() {
+	mIsTypingProfileName = false;
+	mTypedProfileName = "";
+	setProfileStatus("Cancelled input.");
+	playMenuSound();
+}
+
+void CGAME::confirmProfileTextInput() {
+	if (mTypedProfileName.empty()) {
+		mTypedProfileName = "Player";
+	}
+
+	if (mIsRenamingProfile) {
+		mProfileManager.renameProfile(mProfileSelectOption, mTypedProfileName);
+		setProfileStatus("Renamed profile to: " + mTypedProfileName);
+	}
+	else {
+		mProfileManager.createProfile(mTypedProfileName);
+		mProfileSelectOption = mProfileManager.getProfileCount() - 1;
+		setProfileStatus("Created new profile: " + mTypedProfileName);
+	}
+
+	mIsTypingProfileName = false;
+	mTypedProfileName = "";
+	playMenuSound();
+}
+
+void CGAME::setProfileStatus(const std::string& msg) {
+	mProfileStatusMsg = msg;
+	mProfileStatusClock.restart();
+}
+
