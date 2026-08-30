@@ -26,17 +26,25 @@ ipch/
 
 # Build output directories (uncomment if teacher builds from source)
 # If you want to push a pre-built .exe, leave intermediate folders ignored instead
+/bin/
 /obj/
 /build/
 /out/
 /cmake-build-*/
+/x64/
+/Debug/
+/Release/
 
 # Exclude temporary IDE & OS files
 .idea/
 .DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 *.zip
 context/
 context.txt
+*.exp
 
 # SFML docs & examples (keeps repository lightweight)
 SFML-*/doc/
