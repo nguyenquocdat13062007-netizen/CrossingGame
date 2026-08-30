@@ -1,9 +1,20 @@
 # Visual Studio temporary files & caches
 /.vs/
+.vscode/
+.claude/
 *.user
+*.vcxproj.user
 *.suo
 *.db
 *.opendb
+*.VC.db
+*.VC.opendb
+*.ipch
+ipch/
+
+# Executables and copied binaries in root
+*.exe
+/*.dll
 
 # Root build output directories
 /bin/
@@ -33,7 +44,7 @@ SFML-3.1.0/doc/
 SFML-3.1.0/examples/
 SFML-3.1.0/lib/*.pdb
 
-# Save files & temp files
+# Save files & user runtime profile data
 *.crossgame
 save*.crossgame
 Profiles/
