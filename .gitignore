@@ -1,4 +1,4 @@
-# Visual Studio temporary files & caches
+# Visual Studio temporary files, caches & user settings
 /.vs/
 .vscode/
 .claude/
@@ -12,22 +12,7 @@
 *.ipch
 ipch/
 
-# Executables and copied binaries in root
-*.exe
-/*.dll
-
-# Root build output directories
-/bin/
-/obj/
-/x64/
-/x86/
-/Debug/
-/Release/
-/build/
-/out/
-/cmake-build-*/
-
-# Compiler intermediate files & debug symbols
+# Intermediate compiler files & debug symbols (safe to ignore)
 *.obj
 *.o
 *.pdb
@@ -39,18 +24,25 @@ ipch/
 *.res
 *.lastbuildstate
 
-# SFML doc & examples (not needed in repo to keep size lean)
-SFML-3.1.0/doc/
-SFML-3.1.0/examples/
-SFML-3.1.0/lib/*.pdb
+# Build output directories (uncomment if teacher builds from source)
+# If you want to push a pre-built .exe, leave intermediate folders ignored instead
+/obj/
+/build/
+/out/
+/cmake-build-*/
 
-# Save files & user runtime profile data
-*.crossgame
-save*.crossgame
-Profiles/
+# Exclude temporary IDE & OS files
+.idea/
+.DS_Store
 *.zip
 context/
 context.txt
-.idea/
-.DS_Store
-/Presentation_Guide.txt
+
+# SFML docs & examples (keeps repository lightweight)
+SFML-*/doc/
+SFML-*/examples/
+
+# Save game data
+*.crossgame
+save*.crossgame
+Profiles/
