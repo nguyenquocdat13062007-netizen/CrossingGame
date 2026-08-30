@@ -1718,39 +1718,75 @@ void CGAME::renderMenu(RenderWindow& window, Font& font) {
 	}
 
 	// 3. Crisp Retro Arcade Menu Buttons
-	static const string btnLabels[4] = {
-		"1. PLAY GAME",
-		"2. LOAD GAME",
-		"3. SETTINGS",
-		"4. EXIT GAME"
-	};
+	// 3. Menu Buttons (Sử dụng ảnh Sprite chủ đề Zombie - Đã sửa lỗi kích thước)
+	if (mMenuAssetsLoaded) {
+		Texture* btnTextures[4] = { &mTexBtnPlay, &mTexBtnLoad, &mTexBtnSetting, &mTexBtnExit };
 
-	float bw = 330.f;
-	float bh = 50.f;
+		// Đặt chiều rộng mục tiêu mong muốn cho mỗi nút (ví dụ: 360 pixel)
+		float targetWidth = 360.f;
 
-	for (int i = 0; i < 4; ++i) {
-		bool isSelected = (i == mMenuOption);
-		float by = 235.f + (float)i * 68.f;
+		for (int i = 0; i < 4; ++i) {
+			bool isSelected = (i == mMenuOption);
+			float by = 250.f + (float)i * 75.f; // Khoảng cách Y giữa các ảnh
 
-		RectangleShape btnBox(Vector2f(bw, bh));
-		btnBox.setOrigin(Vector2f(bw / 2.0f, bh / 2.0f));
-		btnBox.setPosition(Vector2f(centerX, by));
+			Sprite btnSprite(*btnTextures[i]);
+			FloatRect bounds = btnSprite.getLocalBounds();
 
-		if (isSelected) {
-			btnBox.setFillColor(Color(25, 45, 80, 240));
-			btnBox.setOutlineThickness(3.f);
-			btnBox.setOutlineColor(Color(255, 215, 0)); // Bright Gold
+			btnSprite.setOrigin(Vector2f(bounds.size.x / 2.0f, bounds.size.y / 2.0f));
+			btnSprite.setPosition(Vector2f(centerX, by));
+
+			// Tính tỷ lệ cần thiết để đưa ảnh về đúng chiều rộng targetWidth
+			float baseScale = targetWidth / bounds.size.x;
+
+			// Kết hợp tỷ lệ gốc với hiệu ứng phóng to 5% khi được chọn
+			if (isSelected) {
+				btnSprite.setColor(Color(255, 255, 255, 255));
+				btnSprite.setScale(Vector2f(baseScale * 1.05f, baseScale * 1.05f));
+			}
+			else {
+				btnSprite.setColor(Color(150, 150, 150, 200));
+				btnSprite.setScale(Vector2f(baseScale * 0.95f, baseScale * 0.95f));
+			}
+
+			window.draw(btnSprite);
 		}
-		else {
-			btnBox.setFillColor(Color(14, 18, 30, 200)); // Darker non-selected
-			btnBox.setOutlineThickness(2.f);
-			btnBox.setOutlineColor(Color(65, 75, 100, 180));
-		}
-		window.draw(btnBox);
+	}
+	else {
+		// Fallback: Nếu mất ảnh, vẽ hộp chữ nhật Retro cũ
+		static const string btnLabels[4] = {
+			"1. PLAY GAME",
+			"2. LOAD GAME",
+			"3. SETTINGS",
+			"4. EXIT GAME"
+		};
 
-		string textStr = isSelected ? ("> " + btnLabels[i] + " <") : btnLabels[i];
-		Color textColor = isSelected ? Color(255, 230, 80) : Color(200, 205, 220);
-		DrawTextWithShadow(window, font, textStr, 15, textColor, centerX, by);
+		float bw = 330.f;
+		float bh = 50.f;
+
+		for (int i = 0; i < 4; ++i) {
+			bool isSelected = (i == mMenuOption);
+			float by = 235.f + (float)i * 68.f;
+
+			RectangleShape btnBox(Vector2f(bw, bh));
+			btnBox.setOrigin(Vector2f(bw / 2.0f, bh / 2.0f));
+			btnBox.setPosition(Vector2f(centerX, by));
+
+			if (isSelected) {
+				btnBox.setFillColor(Color(25, 45, 80, 240));
+				btnBox.setOutlineThickness(3.f);
+				btnBox.setOutlineColor(Color(255, 215, 0));
+			}
+			else {
+				btnBox.setFillColor(Color(14, 18, 30, 200));
+				btnBox.setOutlineThickness(2.f);
+				btnBox.setOutlineColor(Color(65, 75, 100, 180));
+			}
+			window.draw(btnBox);
+
+			string textStr = isSelected ? ("> " + btnLabels[i] + " <") : btnLabels[i];
+			Color textColor = isSelected ? Color(255, 230, 80) : Color(200, 205, 220);
+			DrawTextWithShadow(window, font, textStr, 15, textColor, centerX, by);
+		}
 	}
 
 	// 4. Render Active Player Profile Widget in Top-Right Corner (Non-overlapping with Logo)
